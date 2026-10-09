@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.UtteranceProgressListener
+import androidx.core.app.NotificationManagerCompat
 
 class AlarmActivity : ComponentActivity() {
 
@@ -58,6 +59,8 @@ class AlarmActivity : ComponentActivity() {
 
         val reminderText =
             intent.getStringExtra("reminder_text") ?: "Przypomnienie"
+
+        val reminderId = intent.getLongExtra("reminder_id", -1L)
 
         val soundEnabled =
             intent.getBooleanExtra("sound_enabled", true)
@@ -159,6 +162,12 @@ class AlarmActivity : ComponentActivity() {
                         onClick = {
                             dismissed = true
                             stopAlarm()
+
+                            if (reminderId != -1L) {
+                                NotificationManagerCompat.from(this@AlarmActivity)
+                                    .cancel(reminderId.hashCode())
+                            }
+
                             finish()
                         },
                         modifier = Modifier.padding(top = 40.dp)

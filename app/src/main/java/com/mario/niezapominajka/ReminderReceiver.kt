@@ -269,7 +269,7 @@ putExtra("monthly_day", monthlyDay)
         ) {
             NotificationManagerCompat.from(context)
                 .notify(
-                    System.currentTimeMillis().toInt(),
+                    reminderId.hashCode(),
                     notification
                 )
         }

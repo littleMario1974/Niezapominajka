@@ -1294,14 +1294,11 @@ suspend fun loadReminders(
                 hour = jsonObject.getInt("hour"),
                 minute = jsonObject.getInt("minute"),
                 soundEnabled = jsonObject.optBoolean("soundEnabled", true),
-                voiceFilePath = jsonObject.optString(
-                    "voiceFilePath",
-                    null
-                ).takeUnless { it == "null" },
-                audioUri = jsonObject.optString(
-                    "audioUri",
-                    null
-                ).takeUnless { it == "null" },
+
+                voiceFilePath = jsonObject.optString("voiceFilePath")
+                    .takeUnless { it.isEmpty() || it == "null" },
+                audioUri = jsonObject.optString("audioUri")
+                    .takeUnless { it.isEmpty() || it == "null" },
                 repeatType = repeatType,
                 monthlyDay = monthlyDay,
                 speakText = jsonObject.optBoolean("speakText", false)

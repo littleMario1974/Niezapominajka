@@ -70,7 +70,7 @@ data class Reminder(
     val soundEnabled: Boolean,
     val voiceFilePath: String? = null,
     val audioUri: String? = null,
-    val repeatType: String = "NONE"
+    val repeatType: String = "NONE",
     val monthlyDay: Int = 0
 )
 fun createNotificationChannel(context: Context) {
@@ -1371,7 +1371,15 @@ suspend fun saveReminders(
             reminder.audioUri
         )
         jsonObject.put(
+                    jsonObject.put(
             "repeatType",
+            reminder.repeatType
+        )
+        jsonObject.put(
+            "monthlyDay",
+            reminder.monthlyDay
+        )
+        jsonArray.put(jsonObject),
             reminder.repeatType
         )
         jsonArray.put(jsonObject)
@@ -1420,9 +1428,13 @@ suspend fun loadReminders(
                         "audioUri",
                 null
             ),
-                repeatType = jsonObject.optString(
+                              repeatType = jsonObject.optString(
                     "repeatType",
                     "NONE"
+                ),
+                monthlyDay = jsonObject.optInt(
+                    "monthlyDay",
+                    0
                 )
             )
         )

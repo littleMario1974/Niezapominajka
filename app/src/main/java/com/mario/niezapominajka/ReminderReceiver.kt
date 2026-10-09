@@ -188,8 +188,10 @@ val nextDate = getNextReminderDate(
                 putExtra("reminder_id", reminderId)
                 putExtra("repeat_type", repeatType)
                 putExtra("reminder_date", nextDate)
-                putExtra("reminder_hour", reminderHour)
-                putExtra("reminder_minute", reminderMinute)
+                
+putExtra("reminder_hour", reminderHour)
+putExtra("reminder_minute", reminderMinute)
+putExtra("monthly_day", monthlyDay)
             }
 
             val nextPendingIntent =

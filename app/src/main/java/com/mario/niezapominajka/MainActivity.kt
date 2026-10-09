@@ -71,6 +71,7 @@ data class Reminder(
     val voiceFilePath: String? = null,
     val audioUri: String? = null,
     val repeatType: String = "NONE"
+    val monthlyDay: Int = 0
 )
 fun createNotificationChannel(context: Context) {
 

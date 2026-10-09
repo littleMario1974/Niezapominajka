@@ -115,124 +115,106 @@ class AlarmActivity : ComponentActivity() {
         }
     }
 
+
     private fun startAlarm(
         soundEnabled: Boolean,
         voiceFilePath: String?,
         audioUri: String?
     ) {
-
         if (soundEnabled) {
-
-            if (!audioUri.isNullOrEmpty()) {
-
-                mediaPlayer = MediaPlayer().apply {
-
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .setContentType(
-                                AudioAttributes.CONTENT_TYPE_MUSIC
+            val customSoundStarted = try {
+                when {
+                    !audioUri.isNullOrEmpty() -> {
+                        playSound {
+                            setDataSource(
+                                this@AlarmActivity,
+                                android.net.Uri.parse(audioUri)
                             )
-                            .build()
-                    )
+                        }
+                        true
+                    }
 
-                    setDataSource(
-                        this@AlarmActivity,
-                        android.net.Uri.parse(audioUri)
-                    )
+                    !voiceFilePath.isNullOrEmpty() -> {
+                        playSound {
+                            setDataSource(voiceFilePath)
+                        }
+                        true
+                    }
 
-                    isLooping = true
-
-                    prepare()
-                    start()
+                    else -> false
                 }
+            } catch (e: Exception) {
+                mediaPlayer?.release()
+                mediaPlayer = null
+                false
+            }
 
-            } else if (!voiceFilePath.isNullOrEmpty()) {
-
-                mediaPlayer = MediaPlayer().apply {
-
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .setContentType(
-                                AudioAttributes.CONTENT_TYPE_MUSIC
-                            )
-                            .build()
-                    )
-
-                    setDataSource(voiceFilePath)
-
-                    isLooping = true
-
-                    prepare()
-                    start()
-                }
-
-            } else {
-
-                val alarmUri =
-                    RingtoneManager.getDefaultUri(
+            if (!customSoundStarted) {
+                try {
+                    val alarmUri = RingtoneManager.getDefaultUri(
                         RingtoneManager.TYPE_ALARM
+                    ) ?: RingtoneManager.getDefaultUri(
+                        RingtoneManager.TYPE_NOTIFICATION
                     )
 
-                mediaPlayer = MediaPlayer().apply {
-
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ALARM)
-                            .setContentType(
-                                AudioAttributes.CONTENT_TYPE_SONIFICATION
-                            )
-                            .build()
-                    )
-
-                    setDataSource(
-                        this@AlarmActivity,
-                        alarmUri
-                    )
-
-                    isLooping = true
-
-                    prepare()
-                    start()
+                    if (alarmUri != null) {
+                        playSound {
+                            setDataSource(this@AlarmActivity, alarmUri)
+                        }
+                    }
+                } catch (e: Exception) {
+                    mediaPlayer?.release()
+                    mediaPlayer = null
                 }
             }
         }
+
         vibrator =
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 val vibratorManager =
-                    getSystemService(VIBRATOR_MANAGER_SERVICE)
-                            as VibratorManager
+                    getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
                 vibratorManager.defaultVibrator
             } else {
                 @Suppress("DEPRECATION")
                 getSystemService(VIBRATOR_SERVICE) as Vibrator
             }
 
-        val vibrationPattern = longArrayOf(
-            0,
-            500,
-            300,
-            500,
-            300
-        )
+        val vibrationPattern = longArrayOf(0, 500, 300, 500, 300)
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             vibrator?.vibrate(
-                VibrationEffect.createWaveform(
-                    vibrationPattern,
-                    0
-                )
+                VibrationEffect.createWaveform(vibrationPattern, 0)
             )
         } else {
             @Suppress("DEPRECATION")
-            vibrator?.vibrate(
-                vibrationPattern,
-                0
-            )
+            vibrator?.vibrate(vibrationPattern, 0)
         }
     }
 
+    private fun playSound(
+        setSource: MediaPlayer.() -> Unit
+    ) {
+        val player = MediaPlayer()
+
+        try {
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
+
+            player.setSource()
+            player.isLooping = true
+            player.prepare()
+            player.start()
+
+            mediaPlayer = player
+        } catch (e: Exception) {
+            player.release()
+            throw e
+        }
+    }
     private fun stopAlarm() {
         mediaPlayer?.stop()
         mediaPlayer?.release()

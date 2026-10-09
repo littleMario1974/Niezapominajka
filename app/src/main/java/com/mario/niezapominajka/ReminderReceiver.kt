@@ -11,11 +11,13 @@ import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.launch
 
 
+
 private fun getNextReminderDate(
     date: Long,
     hour: Int,
     minute: Int,
-    repeatType: String
+    repeatType: String,
+    monthlyDay: Int
 ): Long? {
 
     if (repeatType == "NONE") {
@@ -25,31 +27,15 @@ private fun getNextReminderDate(
     val calendar = java.util.Calendar.getInstance().apply {
         timeInMillis = date
 
-        set(
-            java.util.Calendar.HOUR_OF_DAY,
-            hour
-        )
-
-        set(
-            java.util.Calendar.MINUTE,
-            minute
-        )
-
-        set(
-            java.util.Calendar.SECOND,
-            0
-        )
-
-        set(
-            java.util.Calendar.MILLISECOND,
-            0
-        )
+        set(java.util.Calendar.HOUR_OF_DAY, hour)
+        set(java.util.Calendar.MINUTE, minute)
+        set(java.util.Calendar.SECOND, 0)
+        set(java.util.Calendar.MILLISECOND, 0)
     }
 
     when (repeatType) {
 
         "DAILY" -> {
-
             calendar.add(
                 java.util.Calendar.DAY_OF_MONTH,
                 1
@@ -57,7 +43,6 @@ private fun getNextReminderDate(
         }
 
         "WEEKLY" -> {
-
             calendar.add(
                 java.util.Calendar.DAY_OF_MONTH,
                 7
@@ -65,11 +50,11 @@ private fun getNextReminderDate(
         }
 
         "MONTHLY" -> {
-
-            val originalDay =
-                calendar.get(
-                    java.util.Calendar.DAY_OF_MONTH
-                )
+            val targetDay = if (monthlyDay in 1..31) {
+                monthlyDay
+            } else {
+                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            }
 
             calendar.set(
                 java.util.Calendar.DAY_OF_MONTH,
@@ -81,21 +66,19 @@ private fun getNextReminderDate(
                 1
             )
 
-            val maxDay =
-                calendar.getActualMaximum(
-                    java.util.Calendar.DAY_OF_MONTH
-                )
+            val maxDay = calendar.getActualMaximum(
+                java.util.Calendar.DAY_OF_MONTH
+            )
 
             calendar.set(
                 java.util.Calendar.DAY_OF_MONTH,
-                minOf(originalDay, maxDay)
+                minOf(targetDay, maxDay)
             )
         }
     }
 
     return calendar.timeInMillis
 }
-
 
 private suspend fun updateReminderDate(
     context: Context,

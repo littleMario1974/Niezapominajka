@@ -216,6 +216,7 @@ fun scheduleReminder(
         putExtra("audio_uri", reminder.audioUri)
         putExtra("reminder_id", reminder.id)
         putExtra("repeat_type", reminder.repeatType)
+        putExtra("monthly_day", reminder.monthlyDay)
         putExtra("reminder_date", reminder.date)
         putExtra("reminder_hour", reminder.hour)
         putExtra("reminder_minute", reminder.minute)

@@ -296,6 +296,7 @@ class AlarmActivity : ComponentActivity() {
             throw e
         }
     }
+
     private fun stopAlarm() {
         speechEnabled = false
 
@@ -303,8 +304,20 @@ class AlarmActivity : ComponentActivity() {
             speechHandler.removeCallbacks(it)
         }
         speechRunnable = null
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
+        speechHandler.removeCallbacksAndMessages(null)
+
+        textToSpeech?.stop()
+
+        mediaPlayer?.let { player ->
+            try {
+                if (player.isPlaying) {
+                    player.stop()
+                }
+            } catch (_: IllegalStateException) {
+            } finally {
+                player.release()
+            }
+        }
         mediaPlayer = null
 
         vibrator?.cancel()
@@ -321,3 +334,4 @@ class AlarmActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
+

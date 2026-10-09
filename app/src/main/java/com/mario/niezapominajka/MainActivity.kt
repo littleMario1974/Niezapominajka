@@ -31,6 +31,10 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import android.media.MediaPlayer
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
 
 private val Context.dataStore by preferencesDataStore(name = "reminders")
 private val REMINDERS_KEY = stringPreferencesKey("reminders")
@@ -337,30 +341,49 @@ fun HomeScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
 
+
     Scaffold(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
 
-            Text(
-                text = "Niezapominajka",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Image(
+                    painter = painterResource(
+                        id = R.drawable.niezapominajka_icon
+                    ),
+                    contentDescription = "Ikona Niezapominajki",
+                    modifier = Modifier.size(60.dp)
+                )
 
-            Text(
-                text = "Nie zapomnij o tym, co ważne.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                Column {
+                    Text(
+                        text = "Niezapominajka",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Nie zapomnij o tym, co ważne.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -764,7 +787,8 @@ fun AddReminderScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -802,6 +826,7 @@ fun AddReminderScreen(
                 value = reminderText,
                 onValueChange = { reminderText = it },
                 modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
                 label = { Text("Co mam przypomnieć?") },
                 placeholder = { Text("np. Wziąć lek") },
                 singleLine = true
@@ -811,7 +836,10 @@ fun AddReminderScreen(
 
             Button(
                 onClick = { showDatePicker = true },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = MaterialTheme.shapes.large
             ) {
                 Text(
                     text = if (selectedDate == null) {
@@ -826,7 +854,10 @@ fun AddReminderScreen(
 
             Button(
                 onClick = { showTimePicker = true },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = MaterialTheme.shapes.large
             ) {
                 Text(
                     text = String.format(
@@ -852,7 +883,10 @@ fun AddReminderScreen(
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     onClick = { repeatMenuExpanded = true },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = MaterialTheme.shapes.large
                 ) {
                     Text(
                         when (repeatType) {
@@ -927,9 +961,13 @@ fun AddReminderScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+
                 Button(
                     onClick = { soundEnabled = true },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(60.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (soundEnabled) {
                             MaterialTheme.colorScheme.primary
@@ -941,9 +979,13 @@ fun AddReminderScreen(
                     Text("🔊 Dźwięk + wibracja")
                 }
 
+
                 Button(
                     onClick = { soundEnabled = false },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(60.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (!soundEnabled) {
                             MaterialTheme.colorScheme.primary
@@ -962,7 +1004,10 @@ fun AddReminderScreen(
                 onClick = {
                     audioPickerLauncher.launch(arrayOf("audio/*"))
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = MaterialTheme.shapes.large
             ) {
                 Text("📁 Wybierz plik audio")
             }
@@ -993,7 +1038,10 @@ fun AddReminderScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = MaterialTheme.shapes.large
             ) {
                 Text(
                     if (isRecording) {
@@ -1023,7 +1071,10 @@ fun AddReminderScreen(
                             start()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = MaterialTheme.shapes.large
                 ) {
                     Text("▶ Odtwórz nagranie")
                 }
@@ -1033,7 +1084,10 @@ fun AddReminderScreen(
 
             Button(
                 onClick = { saveCurrentReminder() },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = MaterialTheme.shapes.large,
                 enabled = reminderText.isNotBlank() && selectedDate != null
             ) {
                 Text("Zapisz przypomnienie")

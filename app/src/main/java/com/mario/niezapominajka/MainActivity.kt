@@ -45,7 +45,8 @@ data class Reminder(
     val voiceFilePath: String? = null,
     val audioUri: String? = null,
     val repeatType: String = "NONE",
-    val monthlyDay: Int = 0
+    val monthlyDay: Int = 0,
+    val speakText: Boolean = false
 )
 
 fun createNotificationChannel(context: Context) {
@@ -132,6 +133,7 @@ fun getNextReminderDate(reminder: Reminder): Long? {
     return calendar.timeInMillis
 }
 
+
 fun scheduleReminder(
     context: Context,
     reminder: Reminder
@@ -145,6 +147,7 @@ fun scheduleReminder(
     ).apply {
         putExtra("reminder_text", reminder.text)
         putExtra("sound_enabled", reminder.soundEnabled)
+        putExtra("speak_text", reminder.speakText)
         putExtra("voice_file_path", reminder.voiceFilePath)
         putExtra("audio_uri", reminder.audioUri)
         putExtra("reminder_id", reminder.id)
@@ -226,6 +229,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
 
         createNotificationChannel(this)
@@ -343,14 +347,29 @@ fun HomeScreen(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+
             Text(
                 text = "Niezapominajka",
-                style = MaterialTheme.typography.headlineLarge
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Twoje przypomnienia")
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Nie zapomnij o tym, co ważne.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Twoje przypomnienia",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (reminders.isEmpty()) {
                 Text("Nie masz jeszcze żadnych przypomnień.")
@@ -392,26 +411,16 @@ fun HomeScreen(
 
             Button(
                 onClick = onAddReminder,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = MaterialTheme.shapes.large
             ) {
-                Text("＋ Dodaj przypomnienie")
+                Text(
+                    text = "＋ Dodaj przypomnienie",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
-
-            Button(
-                onClick = {
-                    val intent = android.content.Intent(
-                        context,
-                        AlarmActivity::class.java
-                    ).apply {
-                        putExtra("reminder_text", "To jest test alarmu")
-                    }
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("⏰ Test alarmu")
-            }
-
             Spacer(modifier = Modifier.height(12.dp))
 
             if (reminderToDelete != null) {
@@ -475,7 +484,17 @@ fun ReminderCard(
         reminder.minute
     )
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        )
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = reminder.text,
@@ -484,26 +503,46 @@ fun ReminderCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+
+            Text(
+                text = time,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = dateFormat.format(Date(reminder.date)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (reminder.repeatType != "NONE") {
+                Spacer(modifier = Modifier.height(4.dp))
+
                 Text(
-                    text = "${dateFormat.format(Date(reminder.date))}  •  $time"
+                    text = when (reminder.repeatType) {
+                        "DAILY" -> "🔄 Powtarzaj codziennie"
+                        "WEEKLY" -> "🔄 Powtarzaj co tydzień"
+                        "MONTHLY" -> "🔄 Powtarzaj co miesiąc"
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.bodyMedium
                 )
-
-                if (reminder.repeatType != "NONE") {
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = when (reminder.repeatType) {
-                            "DAILY" -> "🔄 Codziennie"
-                            "WEEKLY" -> "🔄 Co tydzień"
-                            "MONTHLY" -> "🔄 Co miesiąc"
-                            else -> ""
-                        },
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = when {
+                    reminder.speakText -> "🗣️ Odczyt treści na głos"
+                    reminder.soundEnabled -> "🔊 Dźwięk i wibracja"
+                    else -> "📳 Tylko wibracja"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             if (isPast) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -519,16 +558,20 @@ fun ReminderCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
+
+                OutlinedButton(
                     onClick = onEdit,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("✏️ Edytuj")
                 }
 
-                Button(
+                OutlinedButton(
                     onClick = onDelete,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
                 ) {
                     Text("🗑 Usuń")
                 }
@@ -588,6 +631,10 @@ fun AddReminderScreen(
     var soundEnabled by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.soundEnabled ?: true)
     }
+    var speakText by remember(reminderToEdit?.id) {
+        mutableStateOf(reminderToEdit?.speakText ?: false)
+    }
+
 
     var repeatType by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.repeatType ?: "NONE")
@@ -707,7 +754,8 @@ fun AddReminderScreen(
                     voiceFilePath = recordedVoiceFile?.absolutePath,
                     audioUri = selectedAudioUri?.toString(),
                     repeatType = repeatType,
-                    monthlyDay = monthlyDay
+                    monthlyDay = monthlyDay,
+                    speakText = speakText
                 )
             )
         } else {
@@ -861,6 +909,17 @@ fun AddReminderScreen(
                 text = "Rodzaj alarmu",
                 style = MaterialTheme.typography.titleMedium
             )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = speakText,
+                    onCheckedChange = { speakText = it }
+                )
+
+                Text("Odczytaj treść przypomnienia na głos")
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -1130,6 +1189,7 @@ suspend fun saveReminders(
         jsonObject.put("audioUri", reminder.audioUri)
         jsonObject.put("repeatType", reminder.repeatType)
         jsonObject.put("monthlyDay", reminder.monthlyDay)
+        jsonObject.put("speakText", reminder.speakText)
 
         jsonArray.put(jsonObject)
     }
@@ -1189,7 +1249,8 @@ suspend fun loadReminders(
                     null
                 ).takeUnless { it == "null" },
                 repeatType = repeatType,
-                monthlyDay = monthlyDay
+                monthlyDay = monthlyDay,
+                speakText = jsonObject.optBoolean("speakText", false)
             )
         )
     }

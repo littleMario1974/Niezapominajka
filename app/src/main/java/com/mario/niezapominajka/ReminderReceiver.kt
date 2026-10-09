@@ -120,7 +120,8 @@ class ReminderReceiver : BroadcastReceiver() {
 
         val soundEnabled =
             intent.getBooleanExtra("sound_enabled", true)
-
+        val speakText =
+            intent.getBooleanExtra("speak_text", false)
 
         val voiceFilePath =
             intent.getStringExtra("voice_file_path")
@@ -183,6 +184,7 @@ val nextDate = getNextReminderDate(
             ).apply {
                 putExtra("reminder_text", reminderText)
                 putExtra("sound_enabled", soundEnabled)
+                putExtra("speak_text", speakText)
                 putExtra("voice_file_path", voiceFilePath)
                 putExtra("audio_uri", audioUri)
                 putExtra("reminder_id", reminderId)
@@ -227,6 +229,7 @@ putExtra("monthly_day", monthlyDay)
         ).apply {
             putExtra("reminder_text", reminderText)
             putExtra("sound_enabled", soundEnabled)
+            putExtra("speak_text", speakText)
             putExtra("voice_file_path", voiceFilePath)
             putExtra("audio_uri", audioUri)
             putExtra("reminder_id", reminderId)

@@ -18,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -30,11 +31,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.speech.tts.TextToSpeech
+import java.util.Locale
+import androidx.compose.ui.text.style.TextAlign
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.UtteranceProgressListener
 
 class AlarmActivity : ComponentActivity() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var textToSpeech: TextToSpeech? = null
+    private val speechHandler = Handler(Looper.getMainLooper())
+    private var speechRunnable: Runnable? = null
+    private var reminderSpeechText: String = ""
+    private var speechEnabled: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +62,46 @@ class AlarmActivity : ComponentActivity() {
         val soundEnabled =
             intent.getBooleanExtra("sound_enabled", true)
 
+        val speakText =
+            intent.getBooleanExtra("speak_text", false)
+
+        speechEnabled = speakText
+        reminderSpeechText = reminderText
+
+        if (speakText) {
+            textToSpeech = TextToSpeech(this) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    val languageResult = textToSpeech?.setLanguage(
+                        Locale("pl", "PL")
+                    )
+
+                    if (
+                        languageResult != TextToSpeech.LANG_MISSING_DATA &&
+                        languageResult != TextToSpeech.LANG_NOT_SUPPORTED
+                    ) {
+                        textToSpeech?.setOnUtteranceProgressListener(
+                            object : UtteranceProgressListener() {
+                                override fun onStart(utteranceId: String?) {}
+
+                                override fun onDone(utteranceId: String?) {
+                                    speechHandler.post {
+                                        scheduleSpeechAgain()
+                                    }
+                                }
+
+                                override fun onError(utteranceId: String?) {
+                                    speechHandler.post {
+                                        scheduleSpeechAgain()
+                                    }
+                                }
+                            }
+                        )
+
+                        speakReminder()
+                    }
+                }
+            }
+        }
         val voiceFilePath =
             intent.getStringExtra("voice_file_path")
 
@@ -57,7 +109,7 @@ class AlarmActivity : ComponentActivity() {
             intent.getStringExtra("audio_uri")
 
         startAlarm(
-            soundEnabled,
+            soundEnabled && !speakText,
             voiceFilePath,
             audioUri
         )
@@ -97,7 +149,10 @@ class AlarmActivity : ComponentActivity() {
                         text = reminderText,
                         color = Color.White,
                         fontSize = 40.sp,
-                        modifier = Modifier.padding(top = 24.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
 
                     Button(
@@ -116,6 +171,32 @@ class AlarmActivity : ComponentActivity() {
     }
 
 
+    private fun speakReminder() {
+        textToSpeech?.speak(
+            reminderSpeechText,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "reminder_speech"
+        )
+    }
+
+    private fun scheduleSpeechAgain() {
+        if (!speechEnabled) return
+
+        speechRunnable?.let {
+            speechHandler.removeCallbacks(it)
+        }
+
+        speechRunnable = Runnable {
+            if (speechEnabled) {
+                speakReminder()
+            }
+        }
+
+        speechRunnable?.let {
+            speechHandler.postDelayed(it, 5000)
+        }
+    }
     private fun startAlarm(
         soundEnabled: Boolean,
         voiceFilePath: String?,
@@ -216,6 +297,12 @@ class AlarmActivity : ComponentActivity() {
         }
     }
     private fun stopAlarm() {
+        speechEnabled = false
+
+        speechRunnable?.let {
+            speechHandler.removeCallbacks(it)
+        }
+        speechRunnable = null
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = null
@@ -226,6 +313,11 @@ class AlarmActivity : ComponentActivity() {
 
     override fun onDestroy() {
         stopAlarm()
+
+        textToSpeech?.stop()
+        textToSpeech?.shutdown()
+        textToSpeech = null
+
         super.onDestroy()
     }
 }

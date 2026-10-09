@@ -140,12 +140,19 @@ class ReminderReceiver : BroadcastReceiver() {
         val reminderMinute =
             intent.getIntExtra("reminder_minute", 0)
 
-        val nextDate = getNextReminderDate(
-            reminderDate,
-            reminderHour,
-            reminderMinute,
-            repeatType
-        )
+      
+val monthlyDay = intent.getIntExtra(
+    "monthly_day",
+    0
+)
+
+val nextDate = getNextReminderDate(
+    reminderDate,
+    reminderHour,
+    reminderMinute,
+    repeatType,
+    monthlyDay
+)
         if (nextDate != null) {
 
             val pendingResult = goAsync()

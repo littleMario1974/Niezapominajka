@@ -1,3 +1,4 @@
+
 package com.mario.niezapominajka
 
 import android.content.Context
@@ -5,32 +6,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -46,19 +30,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material3.ButtonDefaults
 import android.media.MediaPlayer
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.width
 
 private val Context.dataStore by preferencesDataStore(name = "reminders")
-
 private val REMINDERS_KEY = stringPreferencesKey("reminders")
 
 data class Reminder(
@@ -73,10 +47,9 @@ data class Reminder(
     val repeatType: String = "NONE",
     val monthlyDay: Int = 0
 )
+
 fun createNotificationChannel(context: Context) {
-
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
         val channel = NotificationChannel(
             "reminders",
             "Przypomnienia",
@@ -93,11 +66,7 @@ fun createNotificationChannel(context: Context) {
 }
 
 fun showTestNotification(context: Context) {
-
-    val notification = NotificationCompat.Builder(
-        context,
-        "reminders"
-    )
+    val notification = NotificationCompat.Builder(context, "reminders")
         .setSmallIcon(android.R.drawable.ic_dialog_info)
         .setContentTitle("Niezapominajka")
         .setContentText("To jest testowe przypomnienie.")
@@ -108,7 +77,8 @@ fun showTestNotification(context: Context) {
     val notificationManager =
         androidx.core.app.NotificationManagerCompat.from(context)
 
-    if (androidx.core.app.ActivityCompat.checkSelfPermission(
+    if (
+        androidx.core.app.ActivityCompat.checkSelfPermission(
             context,
             android.Manifest.permission.POST_NOTIFICATIONS
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -117,92 +87,55 @@ fun showTestNotification(context: Context) {
     }
 }
 
-fun getNextReminderDate(
-    reminder: Reminder
-): Long? {
-
+fun getNextReminderDate(reminder: Reminder): Long? {
     if (reminder.repeatType == "NONE") {
         return null
     }
 
     val calendar = java.util.Calendar.getInstance().apply {
         timeInMillis = reminder.date
-
-        set(
-            java.util.Calendar.HOUR_OF_DAY,
-            reminder.hour
-        )
-
-        set(
-            java.util.Calendar.MINUTE,
-            reminder.minute
-        )
-
-        set(
-            java.util.Calendar.SECOND,
-            0
-        )
-
-        set(
-            java.util.Calendar.MILLISECOND,
-            0
-        )
+        set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
+        set(java.util.Calendar.MINUTE, reminder.minute)
+        set(java.util.Calendar.SECOND, 0)
+        set(java.util.Calendar.MILLISECOND, 0)
     }
 
     when (reminder.repeatType) {
-
         "DAILY" -> {
-
-            calendar.add(
-                java.util.Calendar.DAY_OF_MONTH,
-                1
-            )
+            calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
         }
 
         "WEEKLY" -> {
-
-            calendar.add(
-                java.util.Calendar.DAY_OF_MONTH,
-                7
-            )
+            calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
         }
 
         "MONTHLY" -> {
+            val targetDay = if (reminder.monthlyDay in 1..31) {
+                reminder.monthlyDay
+            } else {
+                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            }
 
-            val originalDay =
-                calendar.get(
-                    java.util.Calendar.DAY_OF_MONTH
-                )
-
-            calendar.set(
-                java.util.Calendar.DAY_OF_MONTH,
-                1
-            )
-
-            calendar.add(
-                java.util.Calendar.MONTH,
-                1
-            )
+            calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+            calendar.add(java.util.Calendar.MONTH, 1)
 
             val maxDay =
-                calendar.getActualMaximum(
-                    java.util.Calendar.DAY_OF_MONTH
-                )
+                calendar.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
 
             calendar.set(
                 java.util.Calendar.DAY_OF_MONTH,
-                minOf(originalDay, maxDay)
+                minOf(targetDay, maxDay)
             )
         }
     }
 
     return calendar.timeInMillis
 }
+
 fun scheduleReminder(
     context: Context,
     reminder: Reminder
 ) {
-
     val alarmManager =
         context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
 
@@ -227,7 +160,7 @@ fun scheduleReminder(
         reminder.id.hashCode(),
         intent,
         android.app.PendingIntent.FLAG_UPDATE_CURRENT or
-                android.app.PendingIntent.FLAG_IMMUTABLE
+            android.app.PendingIntent.FLAG_IMMUTABLE
     )
 
     val calendar = java.util.Calendar.getInstance().apply {
@@ -238,31 +171,24 @@ fun scheduleReminder(
         set(java.util.Calendar.MILLISECOND, 0)
     }
 
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         if (alarmManager.canScheduleExactAlarms()) {
-
             alarmManager.setExactAndAllowWhileIdle(
                 android.app.AlarmManager.RTC_WAKEUP,
                 calendar.timeInMillis,
                 pendingIntent
             )
-
         } else {
-
-            val intent = android.content.Intent(
+            val settingsIntent = android.content.Intent(
                 android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
             ).apply {
                 data = android.net.Uri.parse("package:${context.packageName}")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             }
 
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-
-            context.startActivity(intent)
+            context.startActivity(settingsIntent)
         }
-
     } else {
-
         alarmManager.setExactAndAllowWhileIdle(
             android.app.AlarmManager.RTC_WAKEUP,
             calendar.timeInMillis,
@@ -270,9 +196,6 @@ fun scheduleReminder(
         )
     }
 }
-
-
-
 
 fun cancelReminder(
     context: Context,
@@ -291,7 +214,7 @@ fun cancelReminder(
         reminder.id.hashCode(),
         intent,
         android.app.PendingIntent.FLAG_UPDATE_CURRENT or
-                android.app.PendingIntent.FLAG_IMMUTABLE
+            android.app.PendingIntent.FLAG_IMMUTABLE
     )
 
     alarmManager.cancel(pendingIntent)
@@ -299,7 +222,6 @@ fun cancelReminder(
 }
 
 class MainActivity : ComponentActivity() {
-
     private var refreshVersion by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -317,46 +239,33 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NiezapominajkaTheme {
-                NiezapominajkaApp(
-                    refreshVersion = refreshVersion
-                )
+                NiezapominajkaApp(refreshVersion = refreshVersion)
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-
         refreshVersion++
     }
 }
+
 @Composable
 fun NiezapominajkaApp(
     refreshVersion: Int = 0
 ) {
-
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var showAddScreen by remember {
-        mutableStateOf(false)
-    }
+    var showAddScreen by remember { mutableStateOf(false) }
+    var reminderToEdit by remember { mutableStateOf<Reminder?>(null) }
+    var reminders by remember { mutableStateOf(listOf<Reminder>()) }
 
-    var reminderToEdit by remember {
-        mutableStateOf<Reminder?>(null)
-    }
-
-    var reminders by remember {
-        mutableStateOf(listOf<Reminder>())
-    }
-
-    // Pierwsze wczytanie przypomnień
     LaunchedEffect(refreshVersion) {
         reminders = loadReminders(context)
     }
 
     if (showAddScreen || reminderToEdit != null) {
-
         AddReminderScreen(
             reminderToEdit = reminderToEdit,
             onBack = {
@@ -364,84 +273,56 @@ fun NiezapominajkaApp(
                 reminderToEdit = null
             },
             onSave = { reminder ->
-
                 val oldReminder = reminderToEdit
 
-                if (oldReminder != null) {
+                val updatedReminders = if (oldReminder != null) {
+                    cancelReminder(context, oldReminder)
 
-                    cancelReminder(
-                        context,
-                        oldReminder
-                    )
-
-                    reminders = reminders.map {
-
-                        if (it.id == oldReminder.id) {
-                            reminder
-                        } else {
-                            it
-                        }
+                    reminders.map {
+                        if (it.id == oldReminder.id) reminder else it
                     }
-
                 } else {
-
-                    reminders = reminders + reminder
+                    reminders + reminder
                 }
+
+                reminders = updatedReminders
 
                 scope.launch {
-
-                    saveReminders(
-                        context,
-                        reminders
-                    )
+                    saveReminders(context, updatedReminders)
                 }
 
-                scheduleReminder(
-                    context,
-                    reminder
-                )
+                scheduleReminder(context, reminder)
 
                 showAddScreen = false
                 reminderToEdit = null
             }
         )
-
     } else {
-
         HomeScreen(
             reminders = reminders,
-
             onAddReminder = {
                 reminderToEdit = null
                 showAddScreen = true
             },
-
             onEditReminder = { reminder ->
                 reminderToEdit = reminder
             },
-
             onDeleteReminder = { reminder ->
+                cancelReminder(context, reminder)
 
-                cancelReminder(
-                    context,
-                    reminder
-                )
+                val updatedReminders =
+                    reminders.filter { it.id != reminder.id }
 
-                reminders = reminders.filter {
-                    it.id != reminder.id
-                }
+                reminders = updatedReminders
 
                 scope.launch {
-
-                    saveReminders(
-                        context,
-                        reminders
-                    )
+                    saveReminders(context, updatedReminders)
                 }
             }
         )
     }
 }
+
 @Composable
 fun HomeScreen(
     reminders: List<Reminder>,
@@ -450,15 +331,11 @@ fun HomeScreen(
     onDeleteReminder: (Reminder) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-
-    var reminderToDelete by remember {
-        mutableStateOf<Reminder?>(null)
-    }
+    var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -466,28 +343,18 @@ fun HomeScreen(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-
             Text(
                 text = "Niezapominajka",
                 style = MaterialTheme.typography.headlineLarge
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Twoje przypomnienia"
-            )
-
+            Text("Twoje przypomnienia")
             Spacer(modifier = Modifier.height(24.dp))
 
             if (reminders.isEmpty()) {
-
-                Text(
-                    text = "Nie masz jeszcze żadnych przypomnień."
-                )
-
+                Text("Nie masz jeszcze żadnych przypomnień.")
             } else {
-
                 reminders
                     .sortedWith(
                         compareBy<Reminder> {
@@ -498,7 +365,6 @@ fun HomeScreen(
                                 set(java.util.Calendar.SECOND, 0)
                                 set(java.util.Calendar.MILLISECOND, 0)
                             }
-
                             calendar.timeInMillis <= System.currentTimeMillis()
                         }.thenBy {
                             val calendar = java.util.Calendar.getInstance().apply {
@@ -508,23 +374,18 @@ fun HomeScreen(
                                 set(java.util.Calendar.SECOND, 0)
                                 set(java.util.Calendar.MILLISECOND, 0)
                             }
-
                             calendar.timeInMillis
                         }
                     )
                     .forEach { reminder ->
+                        ReminderCard(
+                            reminder = reminder,
+                            onEdit = { onEditReminder(reminder) },
+                            onDelete = { reminderToDelete = reminder }
+                        )
 
-                    ReminderCard(
-                        reminder = reminder,
-                        onEdit = {
-                            onEditReminder(reminder)
-                        },
-                        onDelete = {
-                            reminderToDelete = reminder
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -535,48 +396,37 @@ fun HomeScreen(
             ) {
                 Text("＋ Dodaj przypomnienie")
             }
+
             Button(
                 onClick = {
                     val intent = android.content.Intent(
                         context,
                         AlarmActivity::class.java
                     ).apply {
-                        putExtra(
-                            "reminder_text",
-                            "To jest test alarmu"
-                        )
+                        putExtra("reminder_text", "To jest test alarmu")
                     }
-
                     context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("⏰ Test alarmu")
             }
+
             Spacer(modifier = Modifier.height(12.dp))
 
-
-
             if (reminderToDelete != null) {
-
                 AlertDialog(
                     onDismissRequest = {
                         reminderToDelete = null
                     },
-                    title = {
-                        Text("Usuń przypomnienie")
-                    },
-                    text = {
-                        Text("Czy na pewno usunąć?")
-                    },
+                    title = { Text("Usuń przypomnienie") },
+                    text = { Text("Czy na pewno usunąć?") },
                     confirmButton = {
                         TextButton(
                             onClick = {
-
                                 reminderToDelete?.let { reminder ->
                                     onDeleteReminder(reminder)
                                 }
-
                                 reminderToDelete = null
                             }
                         ) {
@@ -585,18 +435,13 @@ fun HomeScreen(
                     },
                     dismissButton = {
                         TextButton(
-                            onClick = {
-                                reminderToDelete = null
-                            }
+                            onClick = { reminderToDelete = null }
                         ) {
                             Text("Anuluj")
                         }
                     }
                 )
             }
-
-
-
         }
     }
 }
@@ -607,7 +452,6 @@ fun ReminderCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-
     val reminderDateTime = java.util.Calendar.getInstance().apply {
         timeInMillis = reminder.date
         set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
@@ -616,7 +460,8 @@ fun ReminderCard(
         set(java.util.Calendar.MILLISECOND, 0)
     }
 
-    val isPast = reminderDateTime.timeInMillis <= System.currentTimeMillis()
+    val isPast =
+        reminderDateTime.timeInMillis <= System.currentTimeMillis()
 
     val dateFormat = SimpleDateFormat(
         "dd.MM.yyyy",
@@ -630,14 +475,8 @@ fun ReminderCard(
         reminder.minute
     )
 
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = reminder.text,
                 style = MaterialTheme.typography.titleMedium
@@ -645,16 +484,12 @@ fun ReminderCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "${dateFormat.format(Date(reminder.date))}  •  $time"
                 )
 
                 if (reminder.repeatType != "NONE") {
-
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Text(
@@ -668,23 +503,22 @@ fun ReminderCard(
                     )
                 }
             }
+
             if (isPast) {
-
                 Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
                     text = "Termin minął",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
                 Button(
                     onClick = onEdit,
                     modifier = Modifier.weight(1f)
@@ -733,7 +567,6 @@ fun AddReminderScreen(
             contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
         ) { uri ->
             if (uri != null) {
-
                 try {
                     context.contentResolver.takePersistableUriPermission(
                         uri,
@@ -755,17 +588,13 @@ fun AddReminderScreen(
     var soundEnabled by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.soundEnabled ?: true)
     }
+
     var repeatType by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.repeatType ?: "NONE")
     }
 
-    var showDatePicker by remember {
-        mutableStateOf(false)
-    }
-
-    var showTimePicker by remember {
-        mutableStateOf(false)
-    }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     var selectedDate by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.date)
@@ -784,17 +613,9 @@ fun AddReminderScreen(
         Locale.getDefault()
     )
 
-    var showPastDateError by remember {
-        mutableStateOf(false)
-    }
-
-    var showSaveDialog by remember {
-        mutableStateOf(false)
-    }
-
-    var isRecording by remember {
-        mutableStateOf(false)
-    }
+    var showPastDateError by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
 
     var microphonePermissionGranted by remember {
         mutableStateOf(
@@ -813,13 +634,8 @@ fun AddReminderScreen(
         )
     }
 
-    val voiceRecorder = remember {
-        VoiceRecorder(context)
-    }
-
-    var mediaPlayer by remember {
-        mutableStateOf<MediaPlayer?>(null)
-    }
+    val voiceRecorder = remember { VoiceRecorder(context) }
+    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
 
     val microphonePermissionLauncher =
         androidx.activity.compose.rememberLauncherForActivityResult(
@@ -828,30 +644,26 @@ fun AddReminderScreen(
             microphonePermissionGranted = granted
         }
 
-    val hasChanges =
-        if (reminderToEdit == null) {
-            reminderText.isNotBlank() ||
-                    selectedDate != null ||
-                    selectedHour != 12 ||
-                    selectedMinute != 0 ||
-                    !soundEnabled
-        } else {
-            reminderText != reminderToEdit.text ||
-                    selectedDate != reminderToEdit.date ||
-                    selectedHour != reminderToEdit.hour ||
-                    selectedMinute != reminderToEdit.minute ||
-                    soundEnabled != reminderToEdit.soundEnabled ||
-                    repeatType != reminderToEdit.repeatType
-        }
+    val hasChanges = if (reminderToEdit == null) {
+        reminderText.isNotBlank() ||
+            selectedDate != null ||
+            selectedHour != 12 ||
+            selectedMinute != 0 ||
+            !soundEnabled
+    } else {
+        reminderText != reminderToEdit.text ||
+            selectedDate != reminderToEdit.date ||
+            selectedHour != reminderToEdit.hour ||
+            selectedMinute != reminderToEdit.minute ||
+            soundEnabled != reminderToEdit.soundEnabled ||
+            repeatType != reminderToEdit.repeatType
+    }
 
     fun saveCurrentReminder() {
-
-        if (selectedDate == null) {
-            return
-        }
+        val dateValue = selectedDate ?: return
 
         val selectedDateTime = java.util.Calendar.getInstance().apply {
-            timeInMillis = selectedDate!!
+            timeInMillis = dateValue
             set(java.util.Calendar.HOUR_OF_DAY, selectedHour)
             set(java.util.Calendar.MINUTE, selectedMinute)
             set(java.util.Calendar.SECOND, 0)
@@ -861,25 +673,44 @@ fun AddReminderScreen(
         val now = java.util.Calendar.getInstance()
 
         if (selectedDateTime.timeInMillis > now.timeInMillis) {
-
             showPastDateError = false
+
+            val selectedCalendar = java.util.Calendar.getInstance().apply {
+                timeInMillis = dateValue
+            }
+
+            val selectedDay =
+                selectedCalendar.get(java.util.Calendar.DAY_OF_MONTH)
+
+            val monthlyDay = if (repeatType == "MONTHLY") {
+                if (
+                    reminderToEdit != null &&
+                    dateValue == reminderToEdit.date &&
+                    reminderToEdit.monthlyDay in 1..31
+                ) {
+                    reminderToEdit.monthlyDay
+                } else {
+                    selectedDay
+                }
+            } else {
+                0
+            }
 
             onSave(
                 Reminder(
                     id = reminderToEdit?.id ?: System.currentTimeMillis(),
                     text = reminderText,
-                    date = selectedDate!!,
+                    date = dateValue,
                     hour = selectedHour,
                     minute = selectedMinute,
                     soundEnabled = soundEnabled,
                     voiceFilePath = recordedVoiceFile?.absolutePath,
                     audioUri = selectedAudioUri?.toString(),
-                    repeatType = repeatType
+                    repeatType = repeatType,
+                    monthlyDay = monthlyDay
                 )
             )
-
         } else {
-
             showPastDateError = true
         }
     }
@@ -887,7 +718,6 @@ fun AddReminderScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -895,7 +725,6 @@ fun AddReminderScreen(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-
             TextButton(
                 onClick = {
                     if (hasChanges) {
@@ -923,25 +752,17 @@ fun AddReminderScreen(
 
             OutlinedTextField(
                 value = reminderText,
-                onValueChange = {
-                    reminderText = it
-                },
+                onValueChange = { reminderText = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = {
-                    Text("Co mam przypomnieć?")
-                },
-                placeholder = {
-                    Text("np. Wziąć lek")
-                },
+                label = { Text("Co mam przypomnieć?") },
+                placeholder = { Text("np. Wziąć lek") },
                 singleLine = true
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = {
-                    showDatePicker = true
-                },
+                onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -956,9 +777,7 @@ fun AddReminderScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = {
-                    showTimePicker = true
-                },
+                onClick = { showTimePicker = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -970,6 +789,7 @@ fun AddReminderScreen(
                     )
                 )
             }
+
             Text(
                 text = "Powtarzanie",
                 style = MaterialTheme.typography.titleMedium
@@ -981,14 +801,9 @@ fun AddReminderScreen(
                 mutableStateOf(false)
             }
 
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-
+            Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(
-                    onClick = {
-                        repeatMenuExpanded = true
-                    },
+                    onClick = { repeatMenuExpanded = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -1003,15 +818,10 @@ fun AddReminderScreen(
 
                 DropdownMenu(
                     expanded = repeatMenuExpanded,
-                    onDismissRequest = {
-                        repeatMenuExpanded = false
-                    }
+                    onDismissRequest = { repeatMenuExpanded = false }
                 ) {
-
                     DropdownMenuItem(
-                        text = {
-                            Text("Nie powtarzaj")
-                        },
+                        text = { Text("Nie powtarzaj") },
                         onClick = {
                             repeatType = "NONE"
                             repeatMenuExpanded = false
@@ -1019,9 +829,7 @@ fun AddReminderScreen(
                     )
 
                     DropdownMenuItem(
-                        text = {
-                            Text("Codziennie")
-                        },
+                        text = { Text("Codziennie") },
                         onClick = {
                             repeatType = "DAILY"
                             repeatMenuExpanded = false
@@ -1029,9 +837,7 @@ fun AddReminderScreen(
                     )
 
                     DropdownMenuItem(
-                        text = {
-                            Text("Co tydzień")
-                        },
+                        text = { Text("Co tydzień") },
                         onClick = {
                             repeatType = "WEEKLY"
                             repeatMenuExpanded = false
@@ -1039,9 +845,7 @@ fun AddReminderScreen(
                     )
 
                     DropdownMenuItem(
-                        text = {
-                            Text("Co miesiąc")
-                        },
+                        text = { Text("Co miesiąc") },
                         onClick = {
                             repeatType = "MONTHLY"
                             repeatMenuExpanded = false
@@ -1055,7 +859,6 @@ fun AddReminderScreen(
 
             Text(
                 text = "Rodzaj alarmu",
-
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -1065,34 +868,29 @@ fun AddReminderScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
                 Button(
-                    onClick = {
-                        soundEnabled = true
-                    },
+                    onClick = { soundEnabled = true },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor =
-                            if (soundEnabled)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = if (soundEnabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        }
                     )
                 ) {
                     Text("🔊 Dźwięk + wibracja")
                 }
 
                 Button(
-                    onClick = {
-                        soundEnabled = false
-                    },
+                    onClick = { soundEnabled = false },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor =
-                            if (!soundEnabled)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = if (!soundEnabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        }
                     )
                 ) {
                     Text("📳 Tylko wibracja")
@@ -1100,11 +898,10 @@ fun AddReminderScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
             Button(
                 onClick = {
-                    audioPickerLauncher.launch(
-                        arrayOf("audio/*")
-                    )
+                    audioPickerLauncher.launch(arrayOf("audio/*"))
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -1112,9 +909,7 @@ fun AddReminderScreen(
             }
 
             if (selectedAudioName != null) {
-
                 Spacer(modifier = Modifier.height(8.dp))
-
                 Text(
                     text = "Wybrano: $selectedAudioName",
                     style = MaterialTheme.typography.bodyMedium
@@ -1122,24 +917,18 @@ fun AddReminderScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
             Button(
                 onClick = {
-
                     if (!microphonePermissionGranted) {
-
                         microphonePermissionLauncher.launch(
                             android.Manifest.permission.RECORD_AUDIO
                         )
-
                     } else {
-
                         if (!isRecording) {
-
                             recordedVoiceFile = voiceRecorder.start()
                             isRecording = true
-
                         } else {
-
                             recordedVoiceFile = voiceRecorder.stop()
                             isRecording = false
                         }
@@ -1148,28 +937,23 @@ fun AddReminderScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    if (isRecording)
+                    if (isRecording) {
                         "⏹ Zatrzymaj nagrywanie"
-                    else
+                    } else {
                         "🎙 Nagraj komunikat"
+                    }
                 )
             }
 
             if (recordedVoiceFile != null && !isRecording) {
-
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
                     onClick = {
-
                         mediaPlayer?.release()
 
                         mediaPlayer = MediaPlayer().apply {
-
-                            setDataSource(
-                                recordedVoiceFile!!.absolutePath
-                            )
-
+                            setDataSource(recordedVoiceFile!!.absolutePath)
                             prepare()
 
                             setOnCompletionListener {
@@ -1186,14 +970,10 @@ fun AddReminderScreen(
                 }
             }
 
-
-
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = {
-                    saveCurrentReminder()
-                },
+                onClick = { saveCurrentReminder() },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = reminderText.isNotBlank() && selectedDate != null
             ) {
@@ -1201,9 +981,7 @@ fun AddReminderScreen(
             }
 
             if (showPastDateError) {
-
                 Spacer(modifier = Modifier.height(12.dp))
-
                 Text(
                     text = "Wybrana data i godzina już minęły. Wybierz przyszły termin.",
                     color = MaterialTheme.colorScheme.error,
@@ -1214,18 +992,15 @@ fun AddReminderScreen(
     }
 
     if (showDatePicker) {
-
-        val datePickerState = rememberDatePickerState()
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate
+        )
 
         DatePickerDialog(
-            onDismissRequest = {
-                showDatePicker = false
-            },
+            onDismissRequest = { showDatePicker = false },
             confirmButton = {
-
                 TextButton(
                     onClick = {
-
                         selectedDate = datePickerState.selectedDateMillis
                         showPastDateError = false
                         showDatePicker = false
@@ -1235,25 +1010,18 @@ fun AddReminderScreen(
                 }
             },
             dismissButton = {
-
                 TextButton(
-                    onClick = {
-                        showDatePicker = false
-                    }
+                    onClick = { showDatePicker = false }
                 ) {
                     Text("Anuluj")
                 }
             }
         ) {
-
-            DatePicker(
-                state = datePickerState
-            )
+            DatePicker(state = datePickerState)
         }
     }
 
     if (showTimePicker) {
-
         val timePickerState = rememberTimePickerState(
             initialHour = selectedHour,
             initialMinute = selectedMinute,
@@ -1261,14 +1029,10 @@ fun AddReminderScreen(
         )
 
         AlertDialog(
-            onDismissRequest = {
-                showTimePicker = false
-            },
+            onDismissRequest = { showTimePicker = false },
             confirmButton = {
-
                 TextButton(
                     onClick = {
-
                         selectedHour = timePickerState.hour
                         selectedMinute = timePickerState.minute
                         showPastDateError = false
@@ -1279,47 +1043,40 @@ fun AddReminderScreen(
                 }
             },
             dismissButton = {
-
                 TextButton(
-                    onClick = {
-                        showTimePicker = false
-                    }
+                    onClick = { showTimePicker = false }
                 ) {
                     Text("Anuluj")
                 }
             },
             text = {
-                TimePicker(
-                    state = timePickerState
-                )
+                TimePicker(state = timePickerState)
             }
         )
     }
 
     if (showSaveDialog) {
-
         AlertDialog(
-            onDismissRequest = {
-                showSaveDialog = false
-            },
+            onDismissRequest = { showSaveDialog = false },
             title = {
                 Text(
-                    if (reminderToEdit == null)
+                    if (reminderToEdit == null) {
                         "Zapisać przypomnienie?"
-                    else
+                    } else {
                         "Zapisać zmiany?"
+                    }
                 )
             },
             text = {
                 Text(
-                    if (reminderToEdit == null)
+                    if (reminderToEdit == null) {
                         "Przypomnienie nie zostało jeszcze zapisane."
-                    else
+                    } else {
                         "Wprowadzono zmiany w przypomnieniu."
+                    }
                 )
             },
             confirmButton = {
-
                 TextButton(
                     onClick = {
                         showSaveDialog = false
@@ -1330,7 +1087,6 @@ fun AddReminderScreen(
                 }
             },
             dismissButton = {
-
                 TextButton(
                     onClick = {
                         showSaveDialog = false
@@ -1342,19 +1098,26 @@ fun AddReminderScreen(
             }
         )
     }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaPlayer?.release()
+            mediaPlayer = null
+
+            if (isRecording) {
+                voiceRecorder.stop()
+            }
+        }
+    }
 }
-
-
 
 suspend fun saveReminders(
     context: Context,
     reminders: List<Reminder>
 ) {
-
     val jsonArray = JSONArray()
 
     reminders.forEach { reminder ->
-
         val jsonObject = JSONObject()
 
         jsonObject.put("id", reminder.id)
@@ -1363,48 +1126,28 @@ suspend fun saveReminders(
         jsonObject.put("hour", reminder.hour)
         jsonObject.put("minute", reminder.minute)
         jsonObject.put("soundEnabled", reminder.soundEnabled)
-        jsonObject.put(
-            "voiceFilePath",
-            reminder.voiceFilePath
-        )
-        jsonObject.put(
-            "audioUri",
-            reminder.audioUri
-        )
-        jsonObject.put(
-                    jsonObject.put(
-            "repeatType",
-            reminder.repeatType
-        )
-        jsonObject.put(
-            "monthlyDay",
-            reminder.monthlyDay
-        )
-        jsonArray.put(jsonObject),
-            reminder.repeatType
-        )
+        jsonObject.put("voiceFilePath", reminder.voiceFilePath)
+        jsonObject.put("audioUri", reminder.audioUri)
+        jsonObject.put("repeatType", reminder.repeatType)
+        jsonObject.put("monthlyDay", reminder.monthlyDay)
+
         jsonArray.put(jsonObject)
     }
 
     context.dataStore.edit { preferences ->
-
         preferences[REMINDERS_KEY] = jsonArray.toString()
     }
 }
+
 suspend fun loadReminders(
     context: Context
 ): List<Reminder> {
-
     val preferences = context.dataStore.data.first()
-
     val json = preferences[REMINDERS_KEY] ?: return emptyList()
-
     val jsonArray = JSONArray(json)
-
     val reminders = mutableListOf<Reminder>()
 
     for (i in 0 until jsonArray.length()) {
-
         val jsonObject = jsonArray.getJSONObject(i)
 
         val id = if (jsonObject.has("id")) {
@@ -1413,36 +1156,47 @@ suspend fun loadReminders(
             System.currentTimeMillis() + i
         }
 
+        val date = jsonObject.getLong("date")
+        val repeatType = jsonObject.optString("repeatType", "NONE")
+
+        val storedMonthlyDay = jsonObject.optInt("monthlyDay", 0)
+
+        val monthlyDay = if (
+            repeatType == "MONTHLY" &&
+            storedMonthlyDay !in 1..31
+        ) {
+            java.util.Calendar.getInstance().apply {
+                timeInMillis = date
+            }.get(java.util.Calendar.DAY_OF_MONTH)
+        } else {
+            storedMonthlyDay
+        }
+
         reminders.add(
             Reminder(
                 id = id,
                 text = jsonObject.getString("text"),
-                date = jsonObject.getLong("date"),
+                date = date,
                 hour = jsonObject.getInt("hour"),
                 minute = jsonObject.getInt("minute"),
                 soundEnabled = jsonObject.optBoolean("soundEnabled", true),
                 voiceFilePath = jsonObject.optString(
                     "voiceFilePath",
                     null
-                ),
-                        audioUri = jsonObject.optString(
-                        "audioUri",
-                null
-            ),
-                              repeatType = jsonObject.optString(
-                    "repeatType",
-                    "NONE"
-                ),
-                monthlyDay = jsonObject.optInt(
-                    "monthlyDay",
-                    0
-                )
+                ).takeUnless { it == "null" },
+                audioUri = jsonObject.optString(
+                    "audioUri",
+                    null
+                ).takeUnless { it == "null" },
+                repeatType = repeatType,
+                monthlyDay = monthlyDay
             )
         )
     }
 
     return reminders
 }
+
 @Preview(showBackground = true)
 @Composable
 fun NiezapominajkaPreview() {

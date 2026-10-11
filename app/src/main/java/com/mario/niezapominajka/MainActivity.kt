@@ -331,6 +331,7 @@ fun NiezapominajkaApp(
     }
 }
 
+
 @Composable
 fun HomeScreen(
     reminders: List<Reminder>,
@@ -338,25 +339,55 @@ fun HomeScreen(
     onEditReminder: (Reminder) -> Unit,
     onDeleteReminder: (Reminder) -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
 
+    val sortedReminders = remember(reminders) {
+        reminders.sortedWith(
+            compareBy<Reminder> {
+                val calendar = java.util.Calendar.getInstance().apply {
+                    timeInMillis = it.date
+                    set(java.util.Calendar.HOUR_OF_DAY, it.hour)
+                    set(java.util.Calendar.MINUTE, it.minute)
+                    set(java.util.Calendar.SECOND, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+                calendar.timeInMillis <= System.currentTimeMillis()
+            }.thenBy {
+                val calendar = java.util.Calendar.getInstance().apply {
+                    timeInMillis = it.date
+                    set(java.util.Calendar.HOUR_OF_DAY, it.hour)
+                    set(java.util.Calendar.MINUTE, it.minute)
+                    set(java.util.Calendar.SECOND, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+                calendar.timeInMillis
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onAddReminder
+            ) {
+                Text(
+                    text = "+",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            }
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
         ) {
-
-
             Row(
+                modifier = Modifier.padding(top = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -394,32 +425,16 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (reminders.isEmpty()) {
-                Text("Nie masz jeszcze żadnych przypomnień.")
-            } else {
-                reminders
-                    .sortedWith(
-                        compareBy<Reminder> {
-                            val calendar = java.util.Calendar.getInstance().apply {
-                                timeInMillis = it.date
-                                set(java.util.Calendar.HOUR_OF_DAY, it.hour)
-                                set(java.util.Calendar.MINUTE, it.minute)
-                                set(java.util.Calendar.SECOND, 0)
-                                set(java.util.Calendar.MILLISECOND, 0)
-                            }
-                            calendar.timeInMillis <= System.currentTimeMillis()
-                        }.thenBy {
-                            val calendar = java.util.Calendar.getInstance().apply {
-                                timeInMillis = it.date
-                                set(java.util.Calendar.HOUR_OF_DAY, it.hour)
-                                set(java.util.Calendar.MINUTE, it.minute)
-                                set(java.util.Calendar.SECOND, 0)
-                                set(java.util.Calendar.MILLISECOND, 0)
-                            }
-                            calendar.timeInMillis
-                        }
-                    )
-                    .forEach { reminder ->
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (sortedReminders.isEmpty()) {
+                    Text("Nie masz jeszcze żadnych przypomnień.")
+                } else {
+                    sortedReminders.forEach { reminder ->
                         ReminderCard(
                             reminder = reminder,
                             onEdit = { onEditReminder(reminder) },
@@ -428,55 +443,39 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
                     }
+                }
             }
+        }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = onAddReminder,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text(
-                    text = "＋ Dodaj przypomnienie",
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (reminderToDelete != null) {
-                AlertDialog(
-                    onDismissRequest = {
-                        reminderToDelete = null
-                    },
-                    title = { Text("Usuń przypomnienie") },
-                    text = { Text("Czy na pewno usunąć?") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                reminderToDelete?.let { reminder ->
-                                    onDeleteReminder(reminder)
-                                }
-                                reminderToDelete = null
-                            }
-                        ) {
-                            Text("Usuń")
+        if (reminderToDelete != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    reminderToDelete = null
+                },
+                title = { Text("Usuń przypomnienie") },
+                text = { Text("Czy na pewno usunąć?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            reminderToDelete?.let(onDeleteReminder)
+                            reminderToDelete = null
                         }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { reminderToDelete = null }
-                        ) {
-                            Text("Anuluj")
-                        }
+                    ) {
+                        Text("Usuń")
                     }
-                )
-            }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { reminderToDelete = null }
+                    ) {
+                        Text("Anuluj")
+                    }
+                }
+            )
         }
     }
 }
+
 
 @Composable
 fun ReminderCard(

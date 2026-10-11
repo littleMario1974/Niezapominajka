@@ -1279,21 +1279,6 @@ fun AddReminderScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (soundEnabled) {
-                Button(
-                    onClick = {
-                        audioPickerLauncher.launch(arrayOf("audio/*"))
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Text("📁 Wybierz plik audio")
-                }
-            }
 
             if (recordedVoiceFile != null && !isRecording) {
                 Spacer(modifier = Modifier.height(12.dp))

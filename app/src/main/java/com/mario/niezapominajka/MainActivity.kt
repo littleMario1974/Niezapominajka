@@ -340,6 +340,7 @@ fun HomeScreen(
     onDeleteReminder: (Reminder) -> Unit
 ) {
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
+    var searchText by remember { mutableStateOf("") }
 
     val sortedReminders = remember(reminders) {
         reminders.sortedWith(
@@ -365,17 +366,23 @@ fun HomeScreen(
         )
     }
 
+    val filteredReminders = remember(sortedReminders, searchText) {
+        sortedReminders.filter {
+            it.text.contains(searchText.trim(), ignoreCase = true)
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAddReminder
-            ) {
-                Text(
-                    text = "+",
-                    style = MaterialTheme.typography.headlineMedium
-                )
+            Box(modifier = Modifier.padding(end = 12.dp)) {
+                FloatingActionButton(onClick = onAddReminder) {
+                    Text(
+                        text = "+",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -423,7 +430,26 @@ fun HomeScreen(
                 style = MaterialTheme.typography.titleLarge
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Szukaj przypomnienia") },
+                singleLine = true,
+                trailingIcon = {
+                    if (searchText.isNotEmpty()) {
+                        TextButton(
+                            onClick = { searchText = "" }
+                        ) {
+                            Text("Wyczyść")
+                        }
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Column(
                 modifier = Modifier
@@ -431,10 +457,16 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                if (sortedReminders.isEmpty()) {
-                    Text("Nie masz jeszcze żadnych przypomnień.")
+                if (filteredReminders.isEmpty()) {
+                    Text(
+                        text = if (searchText.isBlank()) {
+                            "Nie masz jeszcze żadnych przypomnień."
+                        } else {
+                            "Brak przypomnień pasujących do wyszukiwania."
+                        }
+                    )
                 } else {
-                    sortedReminders.forEach { reminder ->
+                    filteredReminders.forEach { reminder ->
                         ReminderCard(
                             reminder = reminder,
                             onEdit = { onEditReminder(reminder) },
@@ -475,8 +507,6 @@ fun HomeScreen(
         }
     }
 }
-
-
 @Composable
 fun ReminderCard(
     reminder: Reminder,

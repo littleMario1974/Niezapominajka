@@ -1,5 +1,7 @@
 package com.mario.niezapominajka
 
+import android.app.PendingIntent
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -67,7 +69,7 @@ class AlarmActivity : ComponentActivity() {
 
         val speakText =
             intent.getBooleanExtra("speak_text", false)
-
+        val repeatType = intent.getStringExtra("repeat_type") ?: "NONE"
         speechEnabled = speakText
         reminderSpeechText = reminderText
 
@@ -173,6 +175,63 @@ class AlarmActivity : ComponentActivity() {
                         modifier = Modifier.padding(top = 40.dp)
                     ) {
                         Text("OK")
+                    }
+
+                    Button(
+                        onClick = {
+                            val snoozeIntent = Intent(
+                                this@AlarmActivity,
+                                ReminderReceiver::class.java
+                            ).apply {
+                                putExtra("reminder_text", reminderText)
+                                putExtra("sound_enabled", soundEnabled)
+                                putExtra("speak_text", speakText)
+                                putExtra("voice_file_path", voiceFilePath)
+                                putExtra("audio_uri", audioUri)
+                                putExtra("reminder_id", reminderId)
+                                putExtra("repeat_type", repeatType)
+                                putExtra("is_snooze", true)
+                            }
+
+                            val snoozePendingIntent = PendingIntent.getBroadcast(
+                                this@AlarmActivity,
+                                reminderId.hashCode() xor 0x5A0E,
+                                snoozeIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                            )
+
+                            val alarmManager =
+                                getSystemService(ALARM_SERVICE) as android.app.AlarmManager
+
+                            val snoozeTime = System.currentTimeMillis() + 5 * 60 * 1000L
+
+                            if (android.os.Build.VERSION.SDK_INT < 31 ||
+                                alarmManager.canScheduleExactAlarms()
+                            ) {
+                                alarmManager.setExactAndAllowWhileIdle(
+                                    android.app.AlarmManager.RTC_WAKEUP,
+                                    snoozeTime,
+                                    snoozePendingIntent
+                                )
+                            } else {
+                                alarmManager.setAndAllowWhileIdle(
+                                    android.app.AlarmManager.RTC_WAKEUP,
+                                    snoozeTime,
+                                    snoozePendingIntent
+                                )
+                            }
+
+                            dismissed = true
+                            stopAlarm()
+                            if (reminderId != -1L) {
+                                NotificationManagerCompat.from(this@AlarmActivity)
+                                    .cancel(reminderId.hashCode())
+                            }
+                            finish()
+                        },
+                        modifier = Modifier.padding(top = 12.dp)
+                    ) {
+                        Text("Drzemka 5 min")
                     }
                 }
             }

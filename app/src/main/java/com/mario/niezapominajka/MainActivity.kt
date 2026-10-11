@@ -35,6 +35,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.alpha
 
 private val Context.dataStore by preferencesDataStore(name = "reminders")
 private val REMINDERS_KEY = stringPreferencesKey("reminders")
@@ -466,14 +467,56 @@ fun HomeScreen(
                         }
                     )
                 } else {
-                    filteredReminders.forEach { reminder ->
+                    val upcomingReminders = filteredReminders.filter { reminder ->
+                        val calendar = java.util.Calendar.getInstance().apply {
+                            timeInMillis = reminder.date
+                            set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
+                            set(java.util.Calendar.MINUTE, reminder.minute)
+                            set(java.util.Calendar.SECOND, 0)
+                            set(java.util.Calendar.MILLISECOND, 0)
+                        }
+                        calendar.timeInMillis > System.currentTimeMillis()
+                    }
+
+                    val pastReminders = filteredReminders.filter { reminder ->
+                        val calendar = java.util.Calendar.getInstance().apply {
+                            timeInMillis = reminder.date
+                            set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
+                            set(java.util.Calendar.MINUTE, reminder.minute)
+                            set(java.util.Calendar.SECOND, 0)
+                            set(java.util.Calendar.MILLISECOND, 0)
+                        }
+                        calendar.timeInMillis <= System.currentTimeMillis()
+                    }
+
+                    upcomingReminders.forEach { reminder ->
                         ReminderCard(
                             reminder = reminder,
                             onEdit = { onEditReminder(reminder) },
                             onDelete = { reminderToDelete = reminder }
                         )
-
                         Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    if (pastReminders.isNotEmpty()) {
+                        Text(
+                            text = "Minione przypomnienia",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(
+                                top = if (upcomingReminders.isNotEmpty()) 12.dp else 0.dp,
+                                bottom = 12.dp
+                            )
+                        )
+
+                        pastReminders.forEach { reminder ->
+                            ReminderCard(
+                                reminder = reminder,
+                                onEdit = { onEditReminder(reminder) },
+                                onDelete = { reminderToDelete = reminder }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
                     }
                 }
             }
@@ -536,15 +579,26 @@ fun ReminderCard(
         reminder.minute
     )
 
-
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isPast) {
+                    Modifier.alpha(0.6f)
+                } else {
+                    Modifier
+                }
+            ),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isPast) {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 1.dp
+            defaultElevation = if (isPast) 0.dp else 1.dp
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -686,7 +740,13 @@ fun AddReminderScreen(
     var speakText by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.speakText ?: false)
     }
+    var isSpeakingPreview by remember {
+        mutableStateOf(false)
+    }
 
+    val textToSpeech = remember(context) {
+        android.speech.tts.TextToSpeech(context, null)
+    }
 
     var repeatType by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.repeatType ?: "NONE")
@@ -735,7 +795,9 @@ fun AddReminderScreen(
 
     val voiceRecorder = remember { VoiceRecorder(context) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
-
+    var defaultAlarmPlayer by remember {
+        mutableStateOf<MediaPlayer?>(null)
+    }
     val microphonePermissionLauncher =
         androidx.activity.compose.rememberLauncherForActivityResult(
             contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -1010,7 +1072,29 @@ fun AddReminderScreen(
 
 
                 Button(
-                    onClick = { soundEnabled = false },
+                    onClick = {
+                        soundEnabled = false
+                        speakText = false
+                        isSpeakingPreview = false
+                        textToSpeech.stop()
+                        mediaPlayer?.let {
+                            try {
+                                it.stop()
+                            } catch (_: Exception) {
+                            }
+                            it.release()
+                        }
+                        mediaPlayer = null
+
+                        defaultAlarmPlayer?.let {
+                            try {
+                                it.stop()
+                            } catch (_: Exception) {
+                            }
+                            it.release()
+                        }
+                        defaultAlarmPlayer = null
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .height(60.dp),
@@ -1029,19 +1113,165 @@ fun AddReminderScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    audioPickerLauncher.launch(arrayOf("audio/*"))
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text("📁 Wybierz plik audio")
+            if (soundEnabled) {
+                Button(
+                    onClick = {
+                        audioPickerLauncher.launch(arrayOf("audio/*"))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = MaterialTheme.shapes.large
+                ) {
+                    Text("📁 Wybierz plik audio")
+                }
             }
 
-            if (selectedAudioName != null) {
+
+            if (soundEnabled || speakText) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+
+
+                        if (speakText) {
+                            if (textToSpeech.isSpeaking || isSpeakingPreview) {
+                                textToSpeech.stop()
+                                isSpeakingPreview = false
+                            } else {
+                                val result = textToSpeech.setLanguage(Locale.getDefault())
+
+                                if (
+                                    result != android.speech.tts.TextToSpeech.LANG_MISSING_DATA &&
+                                    result != android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED
+                                ) {
+                                    textToSpeech.setOnUtteranceProgressListener(
+                                        object : android.speech.tts.UtteranceProgressListener() {
+                                            override fun onStart(utteranceId: String?) {
+                                                isSpeakingPreview = true
+                                            }
+
+                                            override fun onDone(utteranceId: String?) {
+                                                isSpeakingPreview = false
+                                            }
+
+                                            override fun onError(utteranceId: String?) {
+                                                isSpeakingPreview = false
+                                            }
+                                        }
+                                    )
+
+                                    val resultSpeak = textToSpeech.speak(
+                                        reminderText,
+                                        android.speech.tts.TextToSpeech.QUEUE_FLUSH,
+                                        null,
+                                        "reminder_preview"
+                                    )
+
+                                    if (resultSpeak == android.speech.tts.TextToSpeech.ERROR) {
+                                        isSpeakingPreview = false
+                                    }
+                                }
+                            }
+                        } else if (selectedAudioUri != null) {
+
+
+                            if (mediaPlayer?.isPlaying == true) {
+                                mediaPlayer?.stop()
+                                mediaPlayer?.release()
+                                mediaPlayer = null
+                            } else {
+                                try {
+                                    defaultAlarmPlayer?.release()
+                                    defaultAlarmPlayer = null
+                                    mediaPlayer?.release()
+
+                                    mediaPlayer = MediaPlayer().apply {
+                                        setDataSource(context, selectedAudioUri!!)
+                                        setOnCompletionListener {
+                                            release()
+                                            mediaPlayer = null
+                                        }
+                                        prepare()
+                                        start()
+                                    }
+                                } catch (_: Exception) {
+                                    mediaPlayer?.release()
+                                    mediaPlayer = null
+                                }
+                            }
+                        } else {
+                            if (defaultAlarmPlayer != null) {
+                                try {
+                                    defaultAlarmPlayer?.stop()
+                                } catch (_: Exception) {
+                                }
+                                defaultAlarmPlayer?.release()
+                                defaultAlarmPlayer = null
+                            } else {
+                                try {
+                                    mediaPlayer?.release()
+                                    mediaPlayer = null
+
+                                    val alarmUri =
+                                        android.media.RingtoneManager.getDefaultUri(
+                                            android.media.RingtoneManager.TYPE_ALARM
+                                        ) ?: android.media.RingtoneManager.getDefaultUri(
+                                            android.media.RingtoneManager.TYPE_NOTIFICATION
+                                        )
+
+                                    if (alarmUri != null) {
+                                        defaultAlarmPlayer = MediaPlayer().apply {
+                                            setDataSource(context, alarmUri)
+                                            setOnCompletionListener {
+                                                release()
+                                                defaultAlarmPlayer = null
+                                            }
+                                            prepare()
+                                            start()
+                                        }
+                                    }
+                                } catch (_: Exception) {
+                                    defaultAlarmPlayer?.release()
+                                    defaultAlarmPlayer = null
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = MaterialTheme.shapes.large
+                ) {
+                    Text(
+                        when {
+                            speakText && isSpeakingPreview ->
+                                "⏹ Zatrzymaj odsłuch"
+
+                            speakText ->
+                                "▶ Odsłuchaj odczyt"
+
+                            mediaPlayer?.isPlaying == true ||
+                                    defaultAlarmPlayer != null ->
+                                "⏹ Zatrzymaj odsłuch"
+
+                            selectedAudioUri != null ->
+                                "▶ Odsłuchaj plik audio"
+
+                            else ->
+                                "▶ Odsłuchaj zwykły alarm"
+                        }
+                    )
+                }
+            }
+
+
+            if (selectedAudioName != null &&
+                selectedAudioUri != null &&
+                soundEnabled &&
+                !speakText
+            ) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Wybrano: $selectedAudioName",
@@ -1051,34 +1281,18 @@ fun AddReminderScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Button(
-                onClick = {
-                    if (!microphonePermissionGranted) {
-                        microphonePermissionLauncher.launch(
-                            android.Manifest.permission.RECORD_AUDIO
-                        )
-                    } else {
-                        if (!isRecording) {
-                            recordedVoiceFile = voiceRecorder.start()
-                            isRecording = true
-                        } else {
-                            recordedVoiceFile = voiceRecorder.stop()
-                            isRecording = false
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text(
-                    if (isRecording) {
-                        "⏹ Zatrzymaj nagrywanie"
-                    } else {
-                        "🎙 Nagraj komunikat"
-                    }
-                )
+            if (soundEnabled) {
+                Button(
+                    onClick = {
+                        audioPickerLauncher.launch(arrayOf("audio/*"))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = MaterialTheme.shapes.large
+                ) {
+                    Text("📁 Wybierz plik audio")
+                }
             }
 
             if (recordedVoiceFile != null && !isRecording) {
@@ -1241,16 +1455,26 @@ fun AddReminderScreen(
         )
     }
 
+
+
     DisposableEffect(Unit) {
         onDispose {
             mediaPlayer?.release()
             mediaPlayer = null
+
+            defaultAlarmPlayer?.release()
+            defaultAlarmPlayer = null
+
+            textToSpeech.stop()
+            textToSpeech.shutdown()
 
             if (isRecording) {
                 voiceRecorder.stop()
             }
         }
     }
+
+
 }
 
 suspend fun saveReminders(

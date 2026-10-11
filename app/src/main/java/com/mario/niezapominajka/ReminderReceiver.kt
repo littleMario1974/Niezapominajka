@@ -147,13 +147,19 @@ val monthlyDay = intent.getIntExtra(
     0
 )
 
-val nextDate = getNextReminderDate(
-    reminderDate,
-    reminderHour,
-    reminderMinute,
-    repeatType,
-    monthlyDay
-)
+        val isSnooze = intent.getBooleanExtra("is_snooze", false)
+
+        val nextDate = if (isSnooze) {
+            null
+        } else {
+            getNextReminderDate(
+                reminderDate,
+                reminderHour,
+                reminderMinute,
+                repeatType,
+                monthlyDay
+            )
+        }
         if (nextDate != null) {
 
             val pendingResult = goAsync()

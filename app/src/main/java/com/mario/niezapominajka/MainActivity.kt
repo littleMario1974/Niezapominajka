@@ -1127,7 +1127,6 @@ fun AddReminderScreen(
                 }
             }
 
-
             if (soundEnabled || speakText) {
                 Spacer(modifier = Modifier.height(8.dp))
 

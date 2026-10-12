@@ -1039,9 +1039,15 @@ fun AddReminderScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
-                    checked = speakText,
-                    onCheckedChange = { speakText = it }
-                )
+    checked = speakText,
+    onCheckedChange = { checked ->
+        speakText = checked
+
+        if (checked) {
+            soundEnabled = true
+        }
+    }
+)
 
                 Text("Odczytaj treść przypomnienia na głos")
             }

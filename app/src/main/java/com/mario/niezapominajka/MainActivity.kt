@@ -36,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.alpha
+import android.app.AlarmManager
 
 private val Context.dataStore by preferencesDataStore(name = "reminders")
 private val REMINDERS_KEY = stringPreferencesKey("reminders")
@@ -78,6 +79,17 @@ fun canUseFullScreenIntent(context: Context): Boolean {
                     as NotificationManager
 
         notificationManager.canUseFullScreenIntent()
+    } else {
+        true
+    }
+}
+
+fun canScheduleExactAlarms(context: Context): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val alarmManager =
+            context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        alarmManager.canScheduleExactAlarms()
     } else {
         true
     }
@@ -341,7 +353,7 @@ fun NiezapominajkaApp(
         HomeScreen(
             reminders = reminders,
             fullScreenIntentAllowed = canUseFullScreenIntent(context),
-
+            exactAlarmsAllowed = canScheduleExactAlarms(context),
             onAddReminder = {
                 reminderToEdit = null
                 showAddScreen = true
@@ -370,11 +382,14 @@ fun NiezapominajkaApp(
 fun HomeScreen(
     reminders: List<Reminder>,
     fullScreenIntentAllowed: Boolean,
+    exactAlarmsAllowed: Boolean,
     onAddReminder: () -> Unit,
     onEditReminder: (Reminder) -> Unit,
     onDeleteReminder: (Reminder) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+
+
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
     var searchText by remember { mutableStateOf("") }
 
@@ -495,6 +510,43 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
+
+            if (!exactAlarmsAllowed) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Wymagane uprawnienie",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Aby przypomnienia uruchamiały się o zaplanowanej godzinie, włącz dostęp do dokładnych alarmów w ustawieniach telefonu."
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    val intent = android.content.Intent(
+                                        android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                        android.net.Uri.parse("package:${context.packageName}")
+                                    )
+                                    context.startActivity(intent)
+                                }
+                            }
+                        ) {
+                            Text("Włącz dokładne alarmy")
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+
             Text(
                 text = "Twoje przypomnienia",
                 style = MaterialTheme.typography.titleLarge

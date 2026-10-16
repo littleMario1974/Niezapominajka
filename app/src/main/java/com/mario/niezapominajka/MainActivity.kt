@@ -71,6 +71,28 @@ fun createNotificationChannel(context: Context) {
     }
 }
 
+fun canUseFullScreenIntent(context: Context): Boolean {
+    return if (Build.VERSION.SDK_INT >= 34) {
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE)
+                    as NotificationManager
+
+        notificationManager.canUseFullScreenIntent()
+    } else {
+        true
+    }
+}
+
+fun openFullScreenIntentSettings(context: Context) {
+    if (Build.VERSION.SDK_INT >= 34) {
+        val intent = android.content.Intent(
+            android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+            android.net.Uri.parse("package:${context.packageName}")
+        )
+        context.startActivity(intent)
+    }
+}
+
 fun showTestNotification(context: Context) {
     val notification = NotificationCompat.Builder(context, "reminders")
         .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -239,6 +261,15 @@ class MainActivity : ComponentActivity() {
 
         createNotificationChannel(this)
 
+        if (Build.VERSION.SDK_INT >= 34) {
+            if (!canUseFullScreenIntent(this)) {
+                android.util.Log.w(
+                    "Niezapominajka",
+                    "Brak dostępu do powiadomień pełnoekranowych"
+                )
+            }
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(
                 arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
@@ -309,6 +340,8 @@ fun NiezapominajkaApp(
     } else {
         HomeScreen(
             reminders = reminders,
+            fullScreenIntentAllowed = canUseFullScreenIntent(context),
+
             onAddReminder = {
                 reminderToEdit = null
                 showAddScreen = true
@@ -336,10 +369,12 @@ fun NiezapominajkaApp(
 @Composable
 fun HomeScreen(
     reminders: List<Reminder>,
+    fullScreenIntentAllowed: Boolean,
     onAddReminder: () -> Unit,
     onEditReminder: (Reminder) -> Unit,
     onDeleteReminder: (Reminder) -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
     var searchText by remember { mutableStateOf("") }
 
@@ -425,7 +460,41 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+            if (!fullScreenIntentAllowed) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Wymagane uprawnienie",
+                            style = MaterialTheme.typography.titleMedium
+                        )
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Aby alarm mógł otwierać ekran na pełnym ekranie, włącz odpowiedni dostęp w ustawieniach telefonu."
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Button(
+                            onClick = {
+                                openFullScreenIntentSettings(context)
+                            }
+                        ) {
+                            Text("Włącz alarmy pełnoekranowe")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
             Text(
                 text = "Twoje przypomnienia",
                 style = MaterialTheme.typography.titleLarge
@@ -1559,3 +1628,4 @@ fun NiezapominajkaPreview() {
         NiezapominajkaApp()
     }
 }
+

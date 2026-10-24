@@ -114,7 +114,7 @@ class AlarmActivity : ComponentActivity() {
             intent.getStringExtra("audio_uri")
 
         startAlarm(
-            soundEnabled && !speakText,
+            false,
             voiceFilePath,
             audioUri
         )
@@ -164,6 +164,10 @@ class AlarmActivity : ComponentActivity() {
                         onClick = {
                             dismissed = true
                             stopAlarm()
+
+                            stopService(
+                                Intent(this@AlarmActivity, AlarmService::class.java)
+                            )
 
                             if (reminderId != -1L) {
                                 NotificationManagerCompat.from(this@AlarmActivity)
@@ -223,6 +227,10 @@ class AlarmActivity : ComponentActivity() {
 
                             dismissed = true
                             stopAlarm()
+
+                            stopService(
+                                Intent(this@AlarmActivity, AlarmService::class.java)
+                            )
                             if (reminderId != -1L) {
                                 NotificationManagerCompat.from(this@AlarmActivity)
                                     .cancel(reminderId.hashCode())

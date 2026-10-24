@@ -229,6 +229,35 @@ putExtra("monthly_day", monthlyDay)
             }
         }
 
+        if (soundEnabled && !speakText) {
+            val serviceIntent = Intent(
+                context,
+                AlarmService::class.java
+            ).apply {
+                putExtra("reminder_text", reminderText)
+                putExtra("sound_enabled", soundEnabled)
+                putExtra("speak_text", speakText)
+                putExtra("voice_file_path", voiceFilePath)
+                putExtra("audio_uri", audioUri)
+            }
+
+            try {
+                if (android.os.Build.VERSION.SDK_INT >=
+                    android.os.Build.VERSION_CODES.O
+                ) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e(
+                    "Niezapominajka",
+                    "Nie udało się uruchomić usługi alarmu",
+                    e
+                )
+            }
+        }
+
         val alarmIntent = Intent(
             context,
             AlarmActivity::class.java

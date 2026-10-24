@@ -41,6 +41,7 @@ import android.os.Looper
 import android.speech.tts.UtteranceProgressListener
 import androidx.core.app.NotificationManagerCompat
 
+
 class AlarmActivity : ComponentActivity() {
 
     private var mediaPlayer: MediaPlayer? = null
@@ -77,7 +78,7 @@ class AlarmActivity : ComponentActivity() {
             textToSpeech = TextToSpeech(this) { status ->
                 if (status == TextToSpeech.SUCCESS) {
                     val languageResult = textToSpeech?.setLanguage(
-                        Locale("pl", "PL")
+                        Locale.forLanguageTag("pl-PL")
                     )
 
                     if (
@@ -113,11 +114,7 @@ class AlarmActivity : ComponentActivity() {
         val audioUri =
             intent.getStringExtra("audio_uri")
 
-        startAlarm(
-            false,
-            voiceFilePath,
-            audioUri
-        )
+        startAlarm()
         setContent {
             var dismissed by remember { mutableStateOf(false) }
 
@@ -157,7 +154,7 @@ class AlarmActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 24.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
 
                     Button(
@@ -273,59 +270,8 @@ class AlarmActivity : ComponentActivity() {
             speechHandler.postDelayed(it, 5000)
         }
     }
-    private fun startAlarm(
-        soundEnabled: Boolean,
-        voiceFilePath: String?,
-        audioUri: String?
-    ) {
-        if (soundEnabled) {
-            val customSoundStarted = try {
-                when {
-                    !audioUri.isNullOrEmpty() -> {
-                        playSound {
-                            setDataSource(
-                                this@AlarmActivity,
-                                android.net.Uri.parse(audioUri)
-                            )
-                        }
-                        true
-                    }
 
-                    !voiceFilePath.isNullOrEmpty() -> {
-                        playSound {
-                            setDataSource(voiceFilePath)
-                        }
-                        true
-                    }
-
-                    else -> false
-                }
-            } catch (e: Exception) {
-                mediaPlayer?.release()
-                mediaPlayer = null
-                false
-            }
-
-            if (!customSoundStarted) {
-                try {
-                    val alarmUri = RingtoneManager.getDefaultUri(
-                        RingtoneManager.TYPE_ALARM
-                    ) ?: RingtoneManager.getDefaultUri(
-                        RingtoneManager.TYPE_NOTIFICATION
-                    )
-
-                    if (alarmUri != null) {
-                        playSound {
-                            setDataSource(this@AlarmActivity, alarmUri)
-                        }
-                    }
-                } catch (e: Exception) {
-                    mediaPlayer?.release()
-                    mediaPlayer = null
-                }
-            }
-        }
-
+    private fun startAlarm() {
         vibrator =
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 val vibratorManager =

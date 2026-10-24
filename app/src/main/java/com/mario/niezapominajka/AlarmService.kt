@@ -1,7 +1,6 @@
 
 package com.mario.niezapominajka
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -9,10 +8,9 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
-import android.net.Uri
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.net.toUri
 
 class AlarmService : Service() {
 
@@ -77,7 +75,7 @@ class AlarmService : Service() {
 
             when {
                 !audioUri.isNullOrBlank() -> {
-                    player.setDataSource(this, Uri.parse(audioUri))
+                    player.setDataSource(this, audioUri.toUri())
                 }
 
                 !voiceFilePath.isNullOrBlank() -> {
@@ -122,18 +120,15 @@ class AlarmService : Service() {
     }
 
     private fun createServiceChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager =
-                getSystemService(NotificationManager::class.java)
+        val manager = getSystemService(NotificationManager::class.java)
 
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Działający alarm",
-                NotificationManager.IMPORTANCE_LOW
-            )
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Działający alarm",
+            NotificationManager.IMPORTANCE_LOW
+        )
 
-            manager.createNotificationChannel(channel)
-        }
+        manager.createNotificationChannel(channel)
     }
 
     override fun onDestroy() {

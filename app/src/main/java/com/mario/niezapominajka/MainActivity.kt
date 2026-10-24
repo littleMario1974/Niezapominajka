@@ -55,22 +55,22 @@ data class Reminder(
     val speakText: Boolean = false
 )
 
+
 fun createNotificationChannel(context: Context) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val channel = NotificationChannel(
-            "reminders",
-            "Przypomnienia",
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = "Powiadomienia z aplikacji Niezapominajka"
-        }
-
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        notificationManager.createNotificationChannel(channel)
+    val channel = NotificationChannel(
+        "reminders",
+        "Przypomnienia",
+        NotificationManager.IMPORTANCE_HIGH
+    ).apply {
+        description = "Powiadomienia z aplikacji Niezapominajka"
     }
+
+    val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    notificationManager.createNotificationChannel(channel)
 }
+
 
 fun canUseFullScreenIntent(context: Context): Boolean {
     return if (Build.VERSION.SDK_INT >= 34) {

@@ -2,9 +2,6 @@ package com.mario.niezapominajka
 
 import android.app.PendingIntent
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -44,7 +41,6 @@ import androidx.core.app.NotificationManagerCompat
 
 class AlarmActivity : ComponentActivity() {
 
-    private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
     private var textToSpeech: TextToSpeech? = null
     private val speechHandler = Handler(Looper.getMainLooper())
@@ -294,30 +290,7 @@ class AlarmActivity : ComponentActivity() {
         }
     }
 
-    private fun playSound(
-        setSource: MediaPlayer.() -> Unit
-    ) {
-        val player = MediaPlayer()
 
-        try {
-            player.setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build()
-            )
-
-            player.setSource()
-            player.isLooping = true
-            player.prepare()
-            player.start()
-
-            mediaPlayer = player
-        } catch (e: Exception) {
-            player.release()
-            throw e
-        }
-    }
 
     private fun stopAlarm() {
         speechEnabled = false
@@ -330,17 +303,6 @@ class AlarmActivity : ComponentActivity() {
 
         textToSpeech?.stop()
 
-        mediaPlayer?.let { player ->
-            try {
-                if (player.isPlaying) {
-                    player.stop()
-                }
-            } catch (_: IllegalStateException) {
-            } finally {
-                player.release()
-            }
-        }
-        mediaPlayer = null
 
         vibrator?.cancel()
         vibrator = null

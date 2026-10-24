@@ -1,16 +1,22 @@
+
 package com.mario.niezapominajka
 
 import android.Manifest
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-
+private const val TAG = "Niezapominajka"
 
 private fun getNextReminderDate(
     date: Long,
@@ -19,116 +25,136 @@ private fun getNextReminderDate(
     repeatType: String,
     monthlyDay: Int
 ): Long? {
+    if (repeatType == "NONE") return null
 
-    if (repeatType == "NONE") {
+    if (date <= 0L || hour !in 0..23 || minute !in 0..59) {
+        Log.e(TAG, "Nieprawidłowe dane terminu: date=$date, hour=$hour, minute=$minute")
+        return null
+    }
+
+    if (repeatType !in setOf("DAILY", "WEEKLY", "MONTHLY")) {
+        Log.e(TAG, "Nieznany typ powtarzania: $repeatType")
         return null
     }
 
     val calendar = java.util.Calendar.getInstance().apply {
         timeInMillis = date
-
         set(java.util.Calendar.HOUR_OF_DAY, hour)
         set(java.util.Calendar.MINUTE, minute)
         set(java.util.Calendar.SECOND, 0)
         set(java.util.Calendar.MILLISECOND, 0)
     }
 
-    when (repeatType) {
+    val targetDay = if (monthlyDay in 1..31) {
+        monthlyDay
+    } else {
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    }
 
-        "DAILY" -> {
-            calendar.add(
-                java.util.Calendar.DAY_OF_MONTH,
-                1
-            )
-        }
+    fun advance() {
+        when (repeatType) {
+            "DAILY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
 
-        "WEEKLY" -> {
-            calendar.add(
-                java.util.Calendar.DAY_OF_MONTH,
-                7
-            )
-        }
+            "WEEKLY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
 
-        "MONTHLY" -> {
-            val targetDay = if (monthlyDay in 1..31) {
-                monthlyDay
-            } else {
-                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            "MONTHLY" -> {
+                calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                calendar.add(java.util.Calendar.MONTH, 1)
+
+                val maxDay = calendar.getActualMaximum(
+                    java.util.Calendar.DAY_OF_MONTH
+                )
+
+                calendar.set(
+                    java.util.Calendar.DAY_OF_MONTH,
+                    minOf(targetDay, maxDay)
+                )
             }
-
-            calendar.set(
-                java.util.Calendar.DAY_OF_MONTH,
-                1
-            )
-
-            calendar.add(
-                java.util.Calendar.MONTH,
-                1
-            )
-
-            val maxDay = calendar.getActualMaximum(
-                java.util.Calendar.DAY_OF_MONTH
-            )
-
-            calendar.set(
-                java.util.Calendar.DAY_OF_MONTH,
-                minOf(targetDay, maxDay)
-            )
         }
     }
 
-    return calendar.timeInMillis
+    // Wyznacz pierwszy termin po poprzednim alarmie.
+    advance()
+
+    // Jeżeli alarm został obsłużony z opóźnieniem, pomiń terminy,
+    // które już minęły.
+    val now = System.currentTimeMillis()
+    var attempts = 0
+
+    while (calendar.timeInMillis <= now && attempts < 500) {
+        advance()
+        attempts++
+    }
+
+    val result = calendar.timeInMillis
+
+    return if (result > now) {
+        result
+    } else {
+        Log.e(TAG, "Nie udało się wyznaczyć przyszłego terminu.")
+        null
+    }
 }
 
 private suspend fun updateReminderDate(
     context: Context,
     reminderId: Long,
     nextDate: Long
-) {
+): Boolean {
+    if (reminderId == -1L) {
+        Log.e(TAG, "Nie można zapisać daty: nieprawidłowy identyfikator.")
+        return false
+    }
 
     val reminders = loadReminders(context)
 
+    var found = false
+
     val updatedReminders = reminders.map { reminder ->
-
         if (reminder.id == reminderId) {
-
-            reminder.copy(
-                date = nextDate
-            )
-
+            found = true
+            reminder.copy(date = nextDate)
         } else {
-
             reminder
         }
     }
 
-    saveReminders(
-        context,
-        updatedReminders
+    if (!found) {
+        Log.e(TAG, "Nie znaleziono przypomnienia o ID=$reminderId.")
+        return false
+    }
+
+    saveReminders(context, updatedReminders)
+
+    Log.d(
+        TAG,
+        "Zapisano nową datę: ID=$reminderId, nextDate=$nextDate"
     )
+
+    return true
 }
+
 class ReminderReceiver : BroadcastReceiver() {
 
-    override fun onReceive(
-        context: Context,
-        intent: Intent
-    ) {
-
+    override fun onReceive(context: Context, intent: Intent) {
         val reminderText =
-            intent.getStringExtra("reminder_text")
-                ?: "Masz przypomnienie"
+            intent.getStringExtra("reminder_text") ?: "Masz przypomnienie"
 
         val soundEnabled =
             intent.getBooleanExtra("sound_enabled", true)
+
         val speakText =
             intent.getBooleanExtra("speak_text", false)
 
         val voiceFilePath =
             intent.getStringExtra("voice_file_path")
+
         val audioUri =
             intent.getStringExtra("audio_uri")
+
         val reminderId =
             intent.getLongExtra("reminder_id", -1L)
+
         val repeatType =
             intent.getStringExtra("repeat_type") ?: "NONE"
 
@@ -141,13 +167,11 @@ class ReminderReceiver : BroadcastReceiver() {
         val reminderMinute =
             intent.getIntExtra("reminder_minute", 0)
 
-      
-val monthlyDay = intent.getIntExtra(
-    "monthly_day",
-    0
-)
+        val monthlyDay =
+            intent.getIntExtra("monthly_day", 0)
 
-        val isSnooze = intent.getBooleanExtra("is_snooze", false)
+        val isSnooze =
+            intent.getBooleanExtra("is_snooze", false)
 
         val nextDate = if (isSnooze) {
             null
@@ -160,75 +184,158 @@ val monthlyDay = intent.getIntExtra(
                 monthlyDay
             )
         }
-        if (nextDate != null) {
 
-            val pendingResult = goAsync()
+        Log.d(
+            TAG,
+            "Uruchomiono alarm: ID=$reminderId, " +
+                    "repeat=$repeatType, date=$reminderDate, " +
+                    "nextDate=$nextDate, snooze=$isSnooze"
+        )
 
-            kotlinx.coroutines.CoroutineScope(
-                kotlinx.coroutines.Dispatchers.IO
-            ).launch {
+        // Zachowujemy czas na zakończenie zapisu przed zakończeniem
+        // obsługi odbiornika. Dzięki temu ekran aplikacji ma większą
+        // szansę odczytać już zaktualizowaną datę.
+        val pendingResult = goAsync()
 
-                try {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                if (nextDate != null) {
+                    try {
+                        updateReminderDate(
+                            context,
+                            reminderId,
+                            nextDate
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Błąd zapisu nowej daty.", e)
+                    }
 
-                    updateReminderDate(
-                        context,
-                        reminderId,
-                        nextDate
-                    )
-
-                } finally {
-
-                    pendingResult.finish()
+                    try {
+                        scheduleNextReminder(
+                            context = context,
+                            reminderText = reminderText,
+                            soundEnabled = soundEnabled,
+                            speakText = speakText,
+                            voiceFilePath = voiceFilePath,
+                            audioUri = audioUri,
+                            reminderId = reminderId,
+                            repeatType = repeatType,
+                            nextDate = nextDate,
+                            hour = reminderHour,
+                            minute = reminderMinute,
+                            monthlyDay = monthlyDay
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Błąd planowania kolejnego alarmu.", e)
+                    }
                 }
+
+                showAlarm(
+                    context = context,
+                    reminderText = reminderText,
+                    soundEnabled = soundEnabled,
+                    speakText = speakText,
+                    voiceFilePath = voiceFilePath,
+                    audioUri = audioUri,
+                    reminderId = reminderId,
+                    repeatType = repeatType
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Błąd obsługi przypomnienia.", e)
+            } finally {
+                pendingResult.finish()
             }
         }
-        if (nextDate != null) {
+    }
 
-            val nextIntent = Intent(
-                context,
-                ReminderReceiver::class.java
-            ).apply {
-                putExtra("reminder_text", reminderText)
-                putExtra("sound_enabled", soundEnabled)
-                putExtra("speak_text", speakText)
-                putExtra("voice_file_path", voiceFilePath)
-                putExtra("audio_uri", audioUri)
-                putExtra("reminder_id", reminderId)
-                putExtra("repeat_type", repeatType)
-                putExtra("reminder_date", nextDate)
-                
-putExtra("reminder_hour", reminderHour)
-putExtra("reminder_minute", reminderMinute)
-putExtra("monthly_day", monthlyDay)
-            }
-
-            val nextPendingIntent =
-                PendingIntent.getBroadcast(
-                    context,
-                    reminderId.hashCode(),
-                    nextIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or
-                            PendingIntent.FLAG_IMMUTABLE
-                )
-
-            val alarmManager =
-                context.getSystemService(
-                    Context.ALARM_SERVICE
-                ) as android.app.AlarmManager
-
-            if (
-                android.os.Build.VERSION.SDK_INT < 31 ||
-                alarmManager.canScheduleExactAlarms()
-            ) {
-
-                alarmManager.setExactAndAllowWhileIdle(
-                    android.app.AlarmManager.RTC_WAKEUP,
-                    nextDate,
-                    nextPendingIntent
-                )
-            }
+    private fun scheduleNextReminder(
+        context: Context,
+        reminderText: String,
+        soundEnabled: Boolean,
+        speakText: Boolean,
+        voiceFilePath: String?,
+        audioUri: String?,
+        reminderId: Long,
+        repeatType: String,
+        nextDate: Long,
+        hour: Int,
+        minute: Int,
+        monthlyDay: Int
+    ) {
+        if (reminderId == -1L) {
+            Log.e(TAG, "Nie można zaplanować alarmu: nieprawidłowe ID.")
+            return
         }
 
+        val nextIntent = Intent(
+            context,
+            ReminderReceiver::class.java
+        ).apply {
+            putExtra("reminder_text", reminderText)
+            putExtra("sound_enabled", soundEnabled)
+            putExtra("speak_text", speakText)
+            putExtra("voice_file_path", voiceFilePath)
+            putExtra("audio_uri", audioUri)
+            putExtra("reminder_id", reminderId)
+            putExtra("repeat_type", repeatType)
+            putExtra("reminder_date", nextDate)
+            putExtra("reminder_hour", hour)
+            putExtra("reminder_minute", minute)
+            putExtra("monthly_day", monthlyDay)
+        }
+
+        val nextPendingIntent = PendingIntent.getBroadcast(
+            context,
+            reminderId.hashCode(),
+            nextIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or
+                    PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val alarmManager = context.getSystemService(
+            Context.ALARM_SERVICE
+        ) as AlarmManager
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            alarmManager.canScheduleExactAlarms()
+        ) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                nextDate,
+                nextPendingIntent
+            )
+        } else {
+            // Rezerwowe planowanie, gdy nie ma uprawnienia
+            // do alarmów dokładnych.
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                nextDate,
+                nextPendingIntent
+            )
+
+            Log.w(
+                TAG,
+                "Brak uprawnienia do alarmów dokładnych. " +
+                        "Ustawiono alarm rezerwowy."
+            )
+        }
+
+        Log.d(
+            TAG,
+            "Zaplanowano kolejny alarm: ID=$reminderId, date=$nextDate"
+        )
+    }
+
+    private fun showAlarm(
+        context: Context,
+        reminderText: String,
+        soundEnabled: Boolean,
+        speakText: Boolean,
+        voiceFilePath: String?,
+        audioUri: String?,
+        reminderId: Long,
+        repeatType: String
+    ) {
         if (soundEnabled && !speakText) {
             val serviceIntent = Intent(
                 context,
@@ -242,19 +349,13 @@ putExtra("monthly_day", monthlyDay)
             }
 
             try {
-                if (android.os.Build.VERSION.SDK_INT >=
-                    android.os.Build.VERSION_CODES.O
-                ) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(serviceIntent)
                 } else {
                     context.startService(serviceIntent)
                 }
             } catch (e: Exception) {
-                android.util.Log.e(
-                    "Niezapominajka",
-                    "Nie udało się uruchomić usługi alarmu",
-                    e
-                )
+                Log.e(TAG, "Nie udało się uruchomić usługi alarmu.", e)
             }
         }
 
@@ -290,23 +391,19 @@ putExtra("monthly_day", monthlyDay)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(false)
             .setOngoing(true)
-            .setFullScreenIntent(
-                alarmPendingIntent,
-                true
-            )
+            .setFullScreenIntent(alarmPendingIntent, true)
             .build()
 
         if (
-            android.os.Build.VERSION.SDK_INT < 33 ||
+            Build.VERSION.SDK_INT < 33 ||
             context.checkSelfPermission(
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            NotificationManagerCompat.from(context)
-                .notify(
-                    reminderId.hashCode(),
-                    notification
-                )
+            NotificationManagerCompat.from(context).notify(
+                reminderId.hashCode(),
+                notification
+            )
         }
     }
 }

@@ -105,27 +105,6 @@ fun openFullScreenIntentSettings(context: Context) {
     }
 }
 
-fun showTestNotification(context: Context) {
-    val notification = NotificationCompat.Builder(context, "reminders")
-        .setSmallIcon(android.R.drawable.ic_dialog_info)
-        .setContentTitle("Niezapominajka")
-        .setContentText("To jest testowe przypomnienie.")
-        .setPriority(NotificationCompat.PRIORITY_HIGH)
-        .setAutoCancel(true)
-        .build()
-
-    val notificationManager =
-        androidx.core.app.NotificationManagerCompat.from(context)
-
-    if (
-        androidx.core.app.ActivityCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.POST_NOTIFICATIONS
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    ) {
-        notificationManager.notify(1001, notification)
-    }
-}
 
 fun getNextReminderDate(reminder: Reminder): Long? {
     if (reminder.repeatType == "NONE") {

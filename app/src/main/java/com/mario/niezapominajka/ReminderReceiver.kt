@@ -1,4 +1,3 @@
-
 package com.mario.niezapominajka
 
 import android.Manifest

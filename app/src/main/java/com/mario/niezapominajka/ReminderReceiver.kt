@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.os.PowerManager
 
 private const val TAG = "Niezapominajka"
 
@@ -173,6 +174,79 @@ class ReminderReceiver : BroadcastReceiver() {
         val isSnooze =
             intent.getBooleanExtra("is_snooze", false)
 
+        val scheduleSnooze =
+            intent.getBooleanExtra("schedule_snooze", false)
+
+        if (scheduleSnooze) {
+            // Zatrzymaj dźwięk odtwarzany przez AlarmService.
+            val stopIntent = Intent(
+                context,
+                AlarmService::class.java
+            ).apply {
+                action = AlarmService.ACTION_STOP
+            }
+
+            try {
+                context.startService(stopIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Nie udało się zatrzymać dźwięku.", e)
+            }
+
+            // Usuń bieżące powiadomienie.
+            NotificationManagerCompat.from(context)
+                .cancel(reminderId.hashCode())
+
+            // Przygotuj ponowne uruchomienie alarmu za 5 minut.
+            val snoozeAlarmIntent = Intent(
+                context,
+                ReminderReceiver::class.java
+            ).apply {
+                putExtra("reminder_text", reminderText)
+                putExtra("sound_enabled", soundEnabled)
+                putExtra("speak_text", speakText)
+                putExtra("voice_file_path", voiceFilePath)
+                putExtra("audio_uri", audioUri)
+                putExtra("reminder_id", reminderId)
+                putExtra("repeat_type", repeatType)
+                putExtra("is_snooze", true)
+                putExtra("schedule_snooze", false)
+            }
+
+            val snoozeAlarmPendingIntent = PendingIntent.getBroadcast(
+                context,
+                reminderId.hashCode() xor 0x5A0E,
+                snoozeAlarmIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                        PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val alarmManager = context.getSystemService(
+                Context.ALARM_SERVICE
+            ) as AlarmManager
+
+            val snoozeTime = System.currentTimeMillis() + 5 * 60 * 1000L
+
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        snoozeTime,
+                        snoozeAlarmPendingIntent
+                    )
+                } else {
+                    alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        snoozeTime,
+                        snoozeAlarmPendingIntent
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Nie udało się zaplanować drzemki.", e)
+            }
+
+            return
+        }
+
         val nextDate = if (isSnooze) {
             null
         } else {
@@ -292,6 +366,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     PendingIntent.FLAG_IMMUTABLE
         )
 
+
         val alarmManager = context.getSystemService(
             Context.ALARM_SERVICE
         ) as AlarmManager
@@ -326,6 +401,7 @@ class ReminderReceiver : BroadcastReceiver() {
         )
     }
 
+
     private fun showAlarm(
         context: Context,
         reminderText: String,
@@ -336,7 +412,13 @@ class ReminderReceiver : BroadcastReceiver() {
         reminderId: Long,
         repeatType: String
     ) {
-        if (soundEnabled && !speakText) {
+        val keyguardManager =
+            context.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+
+        val deviceLocked = keyguardManager.isKeyguardLocked
+
+
+        if (deviceLocked && soundEnabled && !speakText) {
             val serviceIntent = Intent(
                 context,
                 AlarmService::class.java
@@ -359,6 +441,7 @@ class ReminderReceiver : BroadcastReceiver() {
             }
         }
 
+        // Intent otwierający ekran alarmu.
         val alarmIntent = Intent(
             context,
             AlarmActivity::class.java
@@ -380,7 +463,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(
+        val notificationBuilder = NotificationCompat.Builder(
             context,
             "reminders"
         )
@@ -391,15 +474,20 @@ class ReminderReceiver : BroadcastReceiver() {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(false)
             .setOngoing(true)
-            .setFullScreenIntent(alarmPendingIntent, true)
-            .build()
 
+        if (deviceLocked) {
+            notificationBuilder.setFullScreenIntent(alarmPendingIntent, true)
+        }
+
+        val notification = notificationBuilder.build()
         if (
             Build.VERSION.SDK_INT < 33 ||
             context.checkSelfPermission(
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
         ) {
+            Log.d(TAG, "Publikuję powiadomienie alarmu: ID=$reminderId")
+
             NotificationManagerCompat.from(context).notify(
                 reminderId.hashCode(),
                 notification

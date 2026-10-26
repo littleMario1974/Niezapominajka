@@ -69,6 +69,16 @@ fun createNotificationChannel(context: Context) {
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     notificationManager.createNotificationChannel(channel)
+
+    val existingChannel =
+        notificationManager.getNotificationChannel("reminders")
+
+    android.util.Log.d(
+        "Niezapominajka",
+        "Kanał reminders: importance=${existingChannel?.importance}, " +
+                "sound=${existingChannel?.sound}, " +
+                "vibration=${existingChannel?.shouldVibrate()}"
+    )
 }
 
 

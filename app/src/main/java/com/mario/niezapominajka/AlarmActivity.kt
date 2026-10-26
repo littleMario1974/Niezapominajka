@@ -37,7 +37,7 @@ import android.os.Handler
 import android.os.Looper
 import android.speech.tts.UtteranceProgressListener
 import androidx.core.app.NotificationManagerCompat
-
+import android.media.AudioManager
 
 class AlarmActivity : ComponentActivity() {
 
@@ -47,6 +47,7 @@ class AlarmActivity : ComponentActivity() {
     private var speechRunnable: Runnable? = null
     private var reminderSpeechText: String = ""
     private var speechEnabled: Boolean = false
+    private var activeReminderId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +61,7 @@ class AlarmActivity : ComponentActivity() {
             intent.getStringExtra("reminder_text") ?: "Przypomnienie"
 
         val reminderId = intent.getLongExtra("reminder_id", -1L)
-
+        activeReminderId = reminderId
         val soundEnabled =
             intent.getBooleanExtra("sound_enabled", true)
 
@@ -169,9 +170,11 @@ class AlarmActivity : ComponentActivity() {
 
                             finish()
                         },
-                        modifier = Modifier.padding(top = 40.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 40.dp)
                     ) {
-                        Text("OK")
+                        Text("Wyłącz alarm")
                     }
 
                     Button(
@@ -230,7 +233,9 @@ class AlarmActivity : ComponentActivity() {
                             }
                             finish()
                         },
-                        modifier = Modifier.padding(top = 12.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 32.dp)
                     ) {
                         Text("Drzemka 5 min")
                     }
@@ -239,7 +244,28 @@ class AlarmActivity : ComponentActivity() {
         }
     }
 
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (
+            keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP ||
+            keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN
+        ) {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
 
+            audioManager.adjustStreamVolume(
+                AudioManager.STREAM_ALARM,
+                if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+                    AudioManager.ADJUST_RAISE
+                } else {
+                    AudioManager.ADJUST_LOWER
+                },
+                AudioManager.FLAG_SHOW_UI
+            )
+
+            return true
+        }
+
+        return super.onKeyDown(keyCode, event)
+    }
     private fun speakReminder() {
         textToSpeech?.speak(
             reminderSpeechText,

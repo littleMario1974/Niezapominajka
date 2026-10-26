@@ -47,6 +47,7 @@
             android:name=".ReminderReceiver"
             android:exported="false" />
 
+
     </application>
 
 </manifest>

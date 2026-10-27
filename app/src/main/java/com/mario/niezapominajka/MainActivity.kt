@@ -106,8 +106,13 @@ fun openFullScreenIntentSettings(context: Context) {
 }
 
 
+
 fun getNextReminderDate(reminder: Reminder): Long? {
     if (reminder.repeatType == "NONE") {
+        return null
+    }
+
+    if (reminder.repeatType !in setOf("DAILY", "WEEKLY", "MONTHLY")) {
         return null
     }
 
@@ -119,38 +124,53 @@ fun getNextReminderDate(reminder: Reminder): Long? {
         set(java.util.Calendar.MILLISECOND, 0)
     }
 
-    when (reminder.repeatType) {
-        "DAILY" -> {
-            calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
-        }
+    val targetDay = if (reminder.monthlyDay in 1..31) {
+        reminder.monthlyDay
+    } else {
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    }
 
-        "WEEKLY" -> {
-            calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
-        }
-
-        "MONTHLY" -> {
-            val targetDay = if (reminder.monthlyDay in 1..31) {
-                reminder.monthlyDay
-            } else {
-                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    fun advance() {
+        when (reminder.repeatType) {
+            "DAILY" -> {
+                calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
             }
 
-            calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
-            calendar.add(java.util.Calendar.MONTH, 1)
+            "WEEKLY" -> {
+                calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
+            }
 
-            val maxDay =
-                calendar.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+            "MONTHLY" -> {
+                calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                calendar.add(java.util.Calendar.MONTH, 1)
 
-            calendar.set(
-                java.util.Calendar.DAY_OF_MONTH,
-                minOf(targetDay, maxDay)
-            )
+                val maxDay =
+                    calendar.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+
+                calendar.set(
+                    java.util.Calendar.DAY_OF_MONTH,
+                    minOf(targetDay, maxDay)
+                )
+            }
         }
     }
 
-    return calendar.timeInMillis
-}
+    advance()
 
+    var attempts = 0
+    val now = System.currentTimeMillis()
+
+    while (calendar.timeInMillis <= now && attempts < 500) {
+        advance()
+        attempts++
+    }
+
+    return if (calendar.timeInMillis > now) {
+        calendar.timeInMillis
+    } else {
+        null
+    }
+}
 
 fun scheduleReminder(
 context: Context,

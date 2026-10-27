@@ -331,7 +331,10 @@ private fun scheduleNextReminder(
         )
 
         true
+   
     } catch (e: Exception) {
+        alarmManager.cancel(nextPendingIntent)
+
         Log.e(
             TAG,
             "Nie udało się zaplanować kolejnego alarmu. ID=$reminderId",
@@ -339,6 +342,7 @@ private fun scheduleNextReminder(
         )
         false
     }
+
 }
 
 

@@ -159,17 +159,6 @@ reminder: Reminder
 val alarmManager =
 context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
 
-
-
-val pendingIntent = android.app.PendingIntent.getBroadcast(  
-    context,  
-    reminder.id.hashCode(),  
-    intent,  
-    android.app.PendingIntent.FLAG_UPDATE_CURRENT or  
-        android.app.PendingIntent.FLAG_IMMUTABLE  
-)  
-
-
 val calendar = java.util.Calendar.getInstance().apply {
     timeInMillis = reminder.date
     set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)

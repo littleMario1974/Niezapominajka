@@ -184,13 +184,59 @@ val pendingIntent = android.app.PendingIntent.getBroadcast(
         android.app.PendingIntent.FLAG_IMMUTABLE  
 )  
 
-val calendar = java.util.Calendar.getInstance().apply {  
-    timeInMillis = reminder.date  
-    set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)  
-    set(java.util.Calendar.MINUTE, reminder.minute)  
-    set(java.util.Calendar.SECOND, 0)  
-    set(java.util.Calendar.MILLISECOND, 0)  
-}  
+
+val calendar = java.util.Calendar.getInstance().apply {
+    timeInMillis = reminder.date
+    set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
+    set(java.util.Calendar.MINUTE, reminder.minute)
+    set(java.util.Calendar.SECOND, 0)
+    set(java.util.Calendar.MILLISECOND, 0)
+}
+
+if (reminder.repeatType != "NONE") {
+    val targetDay = if (reminder.monthlyDay in 1..31) {
+        reminder.monthlyDay
+    } else {
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    }
+
+    var attempts = 0
+
+    while (calendar.timeInMillis <= System.currentTimeMillis() && attempts < 500) {
+        when (reminder.repeatType) {
+            "DAILY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
+
+            "WEEKLY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
+
+            "MONTHLY" -> {
+                calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                calendar.add(java.util.Calendar.MONTH, 1)
+
+                val maxDay = calendar.getActualMaximum(
+                    java.util.Calendar.DAY_OF_MONTH
+                )
+
+                calendar.set(
+                    java.util.Calendar.DAY_OF_MONTH,
+                    minOf(targetDay, maxDay)
+                )
+            }
+
+            else -> break
+        }
+
+        attempts++
+    }
+
+    if (calendar.timeInMillis <= System.currentTimeMillis()) {
+        android.util.Log.e(
+            "Niezapominajka",
+            "Nie udało się wyznaczyć przyszłego terminu alarmu."
+        )
+        return
+    }
+}
+
 
 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {  
     if (alarmManager.canScheduleExactAlarms()) {  

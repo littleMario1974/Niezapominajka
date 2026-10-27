@@ -1481,33 +1481,7 @@ fun AddReminderScreen(
             }
 
 
-            if (recordedVoiceFile != null && !isRecording) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = {
-                        mediaPlayer?.release()
-
-                        mediaPlayer = MediaPlayer().apply {
-                            setDataSource(recordedVoiceFile!!.absolutePath)
-                            prepare()
-
-                            setOnCompletionListener {
-                                release()
-                                mediaPlayer = null
-                            }
-
-                            start()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Text("▶ Odtwórz nagranie")
-                }
-            }
+            
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -1654,9 +1628,7 @@ fun AddReminderScreen(
             textToSpeech.stop()
             textToSpeech.shutdown()
 
-            if (isRecording) {
-                voiceRecorder.stop()
-            }
+            
         }
     }
 

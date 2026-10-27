@@ -197,6 +197,18 @@ val calendar = java.util.Calendar.getInstance().apply {
     set(java.util.Calendar.MILLISECOND, 0)
 }
 
+    if (
+        reminder.repeatType == "NONE" &&
+        calendar.timeInMillis <= System.currentTimeMillis()
+    ) {
+        android.util.Log.w(
+            "Niezapominajka",
+            "Pominięto przeterminowany alarm jednorazowy: ID=${reminder.id}, " +
+                    "termin=${calendar.timeInMillis}"
+        )
+        return
+    }
+
 if (reminder.repeatType != "NONE") {
     val targetDay = if (reminder.monthlyDay in 1..31) {
         reminder.monthlyDay

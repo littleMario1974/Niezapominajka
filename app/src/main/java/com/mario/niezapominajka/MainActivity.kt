@@ -993,24 +993,6 @@ fun AddReminderScreen(
 
     var showPastDateError by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
-    var isRecording by remember { mutableStateOf(false) }
-
-    var microphonePermissionGranted by remember {
-        mutableStateOf(
-            androidx.core.content.ContextCompat.checkSelfPermission(
-                context,
-                android.Manifest.permission.RECORD_AUDIO
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    var recordedVoiceFile by remember(reminderToEdit?.id) {
-        mutableStateOf(
-            reminderToEdit?.voiceFilePath?.let {
-                java.io.File(it).takeIf { file -> file.exists() }
-            }
-        )
-    }
 
     val voiceRecorder = remember { VoiceRecorder(context) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }

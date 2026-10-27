@@ -1061,7 +1061,6 @@ fun AddReminderScreen(
                     hour = selectedHour,
                     minute = selectedMinute,
                     soundEnabled = soundEnabled,
-                    voiceFilePath = recordedVoiceFile?.absolutePath,
                     audioUri = selectedAudioUri?.toString(),
                     repeatType = repeatType,
                     monthlyDay = monthlyDay,

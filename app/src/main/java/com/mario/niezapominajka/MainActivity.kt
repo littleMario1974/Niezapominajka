@@ -369,7 +369,12 @@ fun HomeScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
-
+Text(
+    text = "Diagnostyka dokładnych alarmów: ${
+        canScheduleExactAlarms(context)
+    }",
+    modifier = Modifier.padding(8.dp)
+)
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
     var searchText by remember { mutableStateOf("") }
 

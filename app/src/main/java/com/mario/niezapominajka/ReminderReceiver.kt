@@ -257,25 +257,42 @@ if (nextDate != null) {
         }
     }
 
-    private fun scheduleNextReminder(
-        context: Context,
-        reminderText: String,
-        soundEnabled: Boolean,
-        speakText: Boolean,
-        voiceFilePath: String?,
-        audioUri: String?,
-        reminderId: Long,
-        repeatType: String,
-        nextDate: Long,
-        hour: Int,
-        minute: Int,
-        monthlyDay: Int
-    ) {
-        if (reminderId == -1L) {
-            Log.e(TAG, "Nie można zaplanować alarmu: nieprawidłowe ID.")
-            return
-        }
+    
+private fun scheduleNextReminder(
+    context: Context,
+    reminderText: String,
+    soundEnabled: Boolean,
+    speakText: Boolean,
+    voiceFilePath: String?,
+    audioUri: String?,
+    reminderId: Long,
+    repeatType: String,
+    nextDate: Long,
+    hour: Int,
+    minute: Int,
+    monthlyDay: Int
+): Boolean {
+    if (reminderId == -1L) {
+        Log.e(TAG, "Nie można zaplanować alarmu: nieprawidłowe ID.")
+        return false
+    }
 
+    val alarmManager = context.getSystemService(
+        Context.ALARM_SERVICE
+    ) as AlarmManager
+
+    if (
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        !alarmManager.canScheduleExactAlarms()
+    ) {
+        Log.e(
+            TAG,
+            "Brak uprawnienia do alarmów dokładnych. ID=$reminderId"
+        )
+        return false
+    }
+
+    return try {
         val nextIntent = Intent(
             context,
             ReminderReceiver::class.java
@@ -298,43 +315,32 @@ if (nextDate != null) {
             reminderId.hashCode(),
             nextIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or
-                    PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_IMMUTABLE
         )
 
-        val alarmManager = context.getSystemService(
-            Context.ALARM_SERVICE
-        ) as AlarmManager
-
-        
-if (
-    Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-    alarmManager.canScheduleExactAlarms()
-) {
-    alarmManager.setExactAndAllowWhileIdle(
-        AlarmManager.RTC_WAKEUP,
-        nextDate,
-        nextPendingIntent
-    )
-
-    Log.d(
-        TAG,
-        "Zaplanowano dokładny kolejny alarm: ID=$reminderId, date=$nextDate"
-    )
-} else {
-    Log.e(
-        TAG,
-        "Nie zaplanowano kolejnego alarmu: brak uprawnienia " +
-            "do alarmów dokładnych. ID=$reminderId"
-    )
-    return
-}
-
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            nextDate,
+            nextPendingIntent
+        )
 
         Log.d(
             TAG,
-            "Zaplanowano kolejny alarm: ID=$reminderId, date=$nextDate"
+            "Zaplanowano dokładny kolejny alarm: " +
+                "ID=$reminderId, date=$nextDate"
         )
+
+        true
+    } catch (e: Exception) {
+        Log.e(
+            TAG,
+            "Nie udało się zaplanować kolejnego alarmu. ID=$reminderId",
+            e
+        )
+        false
     }
+}
+
 
     private fun showAlarm(
         context: Context,

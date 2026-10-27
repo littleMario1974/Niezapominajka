@@ -280,9 +280,26 @@ private var lastExactAlarmPermission: Boolean? = null
     }
 
     override fun onResume() {
-        super.onResume()
-        refreshVersion++
+    super.onResume()
+
+    refreshVersion++
+
+    val exactAlarmPermission = canScheduleExactAlarms(this)
+    val permissionWasGranted =
+        lastExactAlarmPermission != true && exactAlarmPermission
+
+    lastExactAlarmPermission = exactAlarmPermission
+
+    if (permissionWasGranted) {
+        lifecycleScope.launch {
+            val reminders = loadReminders(this@MainActivity)
+
+            reminders.forEach { reminder ->
+                scheduleReminder(this@MainActivity, reminder)
+            }
+        }
     }
+}
 }
 
 @Composable

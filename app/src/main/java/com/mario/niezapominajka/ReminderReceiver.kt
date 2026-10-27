@@ -199,45 +199,45 @@ class ReminderReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 
-if (nextDate != null) {
-    try {
-        scheduleNextReminder(
-            context = context,
-            reminderText = reminderText,
-            soundEnabled = soundEnabled,
-            speakText = speakText,
-            voiceFilePath = voiceFilePath,
-            audioUri = audioUri,
-            reminderId = reminderId,
-            repeatType = repeatType,
-            nextDate = nextDate,
-            hour = reminderHour,
-            minute = reminderMinute,
-            monthlyDay = monthlyDay
-        )
 
-        updateReminderDate(
+if (nextDate != null) {
+    val scheduled = scheduleNextReminder(
+        context = context,
+        reminderText = reminderText,
+        soundEnabled = soundEnabled,
+        speakText = speakText,
+        voiceFilePath = voiceFilePath,
+        audioUri = audioUri,
+        reminderId = reminderId,
+        repeatType = repeatType,
+        nextDate = nextDate,
+        hour = reminderHour,
+        minute = reminderMinute,
+        monthlyDay = monthlyDay
+    )
+
+    if (scheduled) {
+        val updated = updateReminderDate(
             context,
             reminderId,
             nextDate
         )
-    } catch (e: SecurityException) {
+
+        if (!updated) {
+            Log.e(
+                TAG,
+                "Alarm zaplanowany, ale nie udało się zapisać nowej daty. " +
+                    "ID=$reminderId"
+            )
+        }
+    } else {
         Log.e(
             TAG,
-            "Brak uprawnienia do zaplanowania dokładnego alarmu. " +
-                "Data przypomnienia nie została zaktualizowana.",
-            e
-        )
-    } catch (e: Exception) {
-        Log.e(
-            TAG,
-            "Nie udało się zaplanować kolejnego alarmu. " +
-                "Data przypomnienia nie została zaktualizowana.",
-            e
+            "Nie zaplanowano kolejnego alarmu. " +
+                "Data przypomnienia pozostaje bez zmian. ID=$reminderId"
         )
     }
 }
-
 
                 showAlarm(
                     context = context,

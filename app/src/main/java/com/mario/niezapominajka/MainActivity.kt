@@ -994,17 +994,12 @@ fun AddReminderScreen(
     var showPastDateError by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
 
-    val voiceRecorder = remember { VoiceRecorder(context) }
+    
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var defaultAlarmPlayer by remember {
         mutableStateOf<MediaPlayer?>(null)
     }
-    val microphonePermissionLauncher =
-        androidx.activity.compose.rememberLauncherForActivityResult(
-            contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-        ) { granted ->
-            microphonePermissionGranted = granted
-        }
+    
 
     val hasChanges = if (reminderToEdit == null) {
         reminderText.isNotBlank() ||

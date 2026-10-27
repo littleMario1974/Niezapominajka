@@ -668,16 +668,23 @@ Text(
                         calendar.timeInMillis > System.currentTimeMillis()
                     }
 
-                    val pastReminders = filteredReminders.filter { reminder ->
-                        val calendar = java.util.Calendar.getInstance().apply {
-                            timeInMillis = reminder.date
-                            set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
-                            set(java.util.Calendar.MINUTE, reminder.minute)
-                            set(java.util.Calendar.SECOND, 0)
-                            set(java.util.Calendar.MILLISECOND, 0)
-                        }
-                        calendar.timeInMillis <= System.currentTimeMillis()
-                    }
+                    
+val pastReminders = filteredReminders.filter { reminder ->
+    if (reminder.repeatType != "NONE") {
+        false
+    } else {
+        val calendar = java.util.Calendar.getInstance().apply {
+            timeInMillis = reminder.date
+            set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
+            set(java.util.Calendar.MINUTE, reminder.minute)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+
+        calendar.timeInMillis <= System.currentTimeMillis()
+    }
+}
+
 
                     upcomingReminders.forEach { reminder ->
                         ReminderCard(

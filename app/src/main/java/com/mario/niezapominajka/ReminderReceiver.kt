@@ -295,29 +295,30 @@ class ReminderReceiver : BroadcastReceiver() {
             Context.ALARM_SERVICE
         ) as AlarmManager
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-            alarmManager.canScheduleExactAlarms()
-        ) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                nextDate,
-                nextPendingIntent
-            )
-        } else {
-            // Rezerwowe planowanie, gdy nie ma uprawnienia
-            // do alarmów dokładnych.
-            alarmManager.setAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                nextDate,
-                nextPendingIntent
-            )
+        
+if (
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+    alarmManager.canScheduleExactAlarms()
+) {
+    alarmManager.setExactAndAllowWhileIdle(
+        AlarmManager.RTC_WAKEUP,
+        nextDate,
+        nextPendingIntent
+    )
 
-            Log.w(
-                TAG,
-                "Brak uprawnienia do alarmów dokładnych. " +
-                        "Ustawiono alarm rezerwowy."
-            )
-        }
+    Log.d(
+        TAG,
+        "Zaplanowano dokładny kolejny alarm: ID=$reminderId, date=$nextDate"
+    )
+} else {
+    Log.e(
+        TAG,
+        "Nie zaplanowano kolejnego alarmu: brak uprawnienia " +
+            "do alarmów dokładnych. ID=$reminderId"
+    )
+    return
+}
+
 
         Log.d(
             TAG,

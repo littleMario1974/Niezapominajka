@@ -198,36 +198,46 @@ class ReminderReceiver : BroadcastReceiver() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                if (nextDate != null) {
-                    try {
-                        updateReminderDate(
-                            context,
-                            reminderId,
-                            nextDate
-                        )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Błąd zapisu nowej daty.", e)
-                    }
+                
+if (nextDate != null) {
+    try {
+        scheduleNextReminder(
+            context = context,
+            reminderText = reminderText,
+            soundEnabled = soundEnabled,
+            speakText = speakText,
+            voiceFilePath = voiceFilePath,
+            audioUri = audioUri,
+            reminderId = reminderId,
+            repeatType = repeatType,
+            nextDate = nextDate,
+            hour = reminderHour,
+            minute = reminderMinute,
+            monthlyDay = monthlyDay
+        )
 
-                    try {
-                        scheduleNextReminder(
-                            context = context,
-                            reminderText = reminderText,
-                            soundEnabled = soundEnabled,
-                            speakText = speakText,
-                            voiceFilePath = voiceFilePath,
-                            audioUri = audioUri,
-                            reminderId = reminderId,
-                            repeatType = repeatType,
-                            nextDate = nextDate,
-                            hour = reminderHour,
-                            minute = reminderMinute,
-                            monthlyDay = monthlyDay
-                        )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Błąd planowania kolejnego alarmu.", e)
-                    }
-                }
+        updateReminderDate(
+            context,
+            reminderId,
+            nextDate
+        )
+    } catch (e: SecurityException) {
+        Log.e(
+            TAG,
+            "Brak uprawnienia do zaplanowania dokładnego alarmu. " +
+                "Data przypomnienia nie została zaktualizowana.",
+            e
+        )
+    } catch (e: Exception) {
+        Log.e(
+            TAG,
+            "Nie udało się zaplanować kolejnego alarmu. " +
+                "Data przypomnienia nie została zaktualizowana.",
+            e
+        )
+    }
+}
+
 
                 showAlarm(
                     context = context,

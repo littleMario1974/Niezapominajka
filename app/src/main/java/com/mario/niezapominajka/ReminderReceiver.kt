@@ -333,7 +333,7 @@ private fun scheduleNextReminder(
         true
    
     } catch (e: Exception) {
-        alarmManager.cancel(nextPendingIntent)
+        
 
         Log.e(
             TAG,

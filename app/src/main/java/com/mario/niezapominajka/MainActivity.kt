@@ -37,7 +37,6 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.draw.alpha
 import android.app.AlarmManager
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 
 private val Context.dataStore by preferencesDataStore(name = "reminders")
 private val REMINDERS_KEY = stringPreferencesKey("reminders")

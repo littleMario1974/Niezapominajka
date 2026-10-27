@@ -423,11 +423,7 @@ class ReminderReceiver : BroadcastReceiver() {
             }
 
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
+                context.startForegroundService(serviceIntent)
             } catch (e: Exception) {
                 Log.e(TAG, "Nie udało się uruchomić usługi alarmu.", e)
             }

@@ -191,7 +191,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     .cancel(reminderId.hashCode())
 
                 context.stopService(
-                    Intent(context, AlarmService::class.java)
+                    Intent().setClass(context, AlarmService::class.java)
                 )
 
                 return
@@ -204,7 +204,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     .cancel(reminderId.hashCode())
 
                 context.stopService(
-                    Intent(context, AlarmService::class.java)
+                    Intent().setClass(context, AlarmService::class.java)
                 )
 
                 return

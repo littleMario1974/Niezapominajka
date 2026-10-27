@@ -1,4 +1,3 @@
-
 package com.mario.niezapominajka
 
 import android.content.Context
@@ -37,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.alpha
 import android.app.AlarmManager
+import androidx.lifecycle.lifecycleScope
 
 private val Context.dataStore by preferencesDataStore(name = "reminders")
 private val REMINDERS_KEY = stringPreferencesKey("reminders")
@@ -116,8 +116,13 @@ fun openFullScreenIntentSettings(context: Context) {
 }
 
 
+
 fun getNextReminderDate(reminder: Reminder): Long? {
     if (reminder.repeatType == "NONE") {
+        return null
+    }
+
+    if (reminder.repeatType !in setOf("DAILY", "WEEKLY", "MONTHLY")) {
         return null
     }
 
@@ -129,104 +134,166 @@ fun getNextReminderDate(reminder: Reminder): Long? {
         set(java.util.Calendar.MILLISECOND, 0)
     }
 
-    when (reminder.repeatType) {
-        "DAILY" -> {
-            calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
-        }
+    val targetDay = if (reminder.monthlyDay in 1..31) {
+        reminder.monthlyDay
+    } else {
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    }
 
-        "WEEKLY" -> {
-            calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
-        }
-
-        "MONTHLY" -> {
-            val targetDay = if (reminder.monthlyDay in 1..31) {
-                reminder.monthlyDay
-            } else {
-                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    fun advance() {
+        when (reminder.repeatType) {
+            "DAILY" -> {
+                calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
             }
 
-            calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
-            calendar.add(java.util.Calendar.MONTH, 1)
+            "WEEKLY" -> {
+                calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
+            }
 
-            val maxDay =
-                calendar.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+            "MONTHLY" -> {
+                calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                calendar.add(java.util.Calendar.MONTH, 1)
 
-            calendar.set(
-                java.util.Calendar.DAY_OF_MONTH,
-                minOf(targetDay, maxDay)
-            )
+                val maxDay =
+                    calendar.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+
+                calendar.set(
+                    java.util.Calendar.DAY_OF_MONTH,
+                    minOf(targetDay, maxDay)
+                )
+            }
         }
     }
 
-    return calendar.timeInMillis
-}
+    advance()
 
+    var attempts = 0
+    val now = System.currentTimeMillis()
+
+    while (calendar.timeInMillis <= now && attempts < 500) {
+        advance()
+        attempts++
+    }
+
+    return if (calendar.timeInMillis > now) {
+        calendar.timeInMillis
+    } else {
+        null
+    }
+}
 
 fun scheduleReminder(
-    context: Context,
-    reminder: Reminder
+context: Context,
+reminder: Reminder
 ) {
-    val alarmManager =
-        context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+val alarmManager =
+context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
 
-    val intent = android.content.Intent(
-        context,
-        ReminderReceiver::class.java
-    ).apply {
-        putExtra("reminder_text", reminder.text)
-        putExtra("sound_enabled", reminder.soundEnabled)
-        putExtra("speak_text", reminder.speakText)
-        putExtra("voice_file_path", reminder.voiceFilePath)
-        putExtra("audio_uri", reminder.audioUri)
-        putExtra("reminder_id", reminder.id)
-        putExtra("repeat_type", reminder.repeatType)
-        putExtra("monthly_day", reminder.monthlyDay)
-        putExtra("reminder_date", reminder.date)
-        putExtra("reminder_hour", reminder.hour)
-        putExtra("reminder_minute", reminder.minute)
+val calendar = java.util.Calendar.getInstance().apply {
+    timeInMillis = reminder.date
+    set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
+    set(java.util.Calendar.MINUTE, reminder.minute)
+    set(java.util.Calendar.SECOND, 0)
+    set(java.util.Calendar.MILLISECOND, 0)
+}
+
+if (reminder.repeatType != "NONE") {
+    val targetDay = if (reminder.monthlyDay in 1..31) {
+        reminder.monthlyDay
+    } else {
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
     }
 
-    val pendingIntent = android.app.PendingIntent.getBroadcast(
-        context,
-        reminder.id.hashCode(),
-        intent,
-        android.app.PendingIntent.FLAG_UPDATE_CURRENT or
-            android.app.PendingIntent.FLAG_IMMUTABLE
-    )
+    var attempts = 0
 
-    val calendar = java.util.Calendar.getInstance().apply {
-        timeInMillis = reminder.date
-        set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
-        set(java.util.Calendar.MINUTE, reminder.minute)
-        set(java.util.Calendar.SECOND, 0)
-        set(java.util.Calendar.MILLISECOND, 0)
-    }
+    while (calendar.timeInMillis <= System.currentTimeMillis() && attempts < 500) {
+        when (reminder.repeatType) {
+            "DAILY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        if (alarmManager.canScheduleExactAlarms()) {
-            alarmManager.setExactAndAllowWhileIdle(
-                android.app.AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
-        } else {
-            val settingsIntent = android.content.Intent(
-                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
-            ).apply {
-                data = android.net.Uri.parse("package:${context.packageName}")
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            "WEEKLY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
+
+            "MONTHLY" -> {
+                calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                calendar.add(java.util.Calendar.MONTH, 1)
+
+                val maxDay = calendar.getActualMaximum(
+                    java.util.Calendar.DAY_OF_MONTH
+                )
+
+                calendar.set(
+                    java.util.Calendar.DAY_OF_MONTH,
+                    minOf(targetDay, maxDay)
+                )
             }
 
-            context.startActivity(settingsIntent)
+            else -> break
         }
-    } else {
-        alarmManager.setExactAndAllowWhileIdle(
-            android.app.AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            pendingIntent
+
+        attempts++
+    }
+
+    if (calendar.timeInMillis <= System.currentTimeMillis()) {
+        android.util.Log.e(
+            "Niezapominajka",
+            "Nie udało się wyznaczyć przyszłego terminu alarmu."
         )
+        return
     }
 }
+
+val intent = android.content.Intent(
+    context,
+    ReminderReceiver::class.java
+).apply {
+    putExtra("reminder_text", reminder.text)
+    putExtra("sound_enabled", reminder.soundEnabled)
+    putExtra("speak_text", reminder.speakText)
+    putExtra("voice_file_path", reminder.voiceFilePath)
+    putExtra("audio_uri", reminder.audioUri)
+    putExtra("reminder_id", reminder.id)
+    putExtra("repeat_type", reminder.repeatType)
+    putExtra("monthly_day", reminder.monthlyDay)
+    putExtra("reminder_date", calendar.timeInMillis)
+    putExtra("reminder_hour", reminder.hour)
+    putExtra("reminder_minute", reminder.minute)
+}
+
+val pendingIntent = android.app.PendingIntent.getBroadcast(
+    context,
+    reminder.id.hashCode(),
+    intent,
+    android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+        android.app.PendingIntent.FLAG_IMMUTABLE
+)
+
+
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {  
+    if (alarmManager.canScheduleExactAlarms()) {  
+        alarmManager.setExactAndAllowWhileIdle(  
+            android.app.AlarmManager.RTC_WAKEUP,  
+            calendar.timeInMillis,  
+            pendingIntent  
+        )  
+    } else {  
+        val settingsIntent = android.content.Intent(  
+            android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM  
+        ).apply {  
+            data = android.net.Uri.parse("package:${context.packageName}")  
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)  
+        }  
+
+        context.startActivity(settingsIntent)  
+    }  
+} else {  
+    alarmManager.setExactAndAllowWhileIdle(  
+        android.app.AlarmManager.RTC_WAKEUP,  
+        calendar.timeInMillis,  
+        pendingIntent  
+    )  
+}
+
+}
+
 
 fun cancelReminder(
     context: Context,
@@ -253,6 +320,7 @@ fun cancelReminder(
 }
 
 class MainActivity : ComponentActivity() {
+private var lastExactAlarmPermission: Boolean? = null
     private var refreshVersion by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -286,9 +354,26 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onResume() {
-        super.onResume()
-        refreshVersion++
+    super.onResume()
+
+    refreshVersion++
+
+    val exactAlarmPermission = canScheduleExactAlarms(this)
+    val permissionWasGranted =
+        lastExactAlarmPermission != true && exactAlarmPermission
+
+    lastExactAlarmPermission = exactAlarmPermission
+
+    if (permissionWasGranted) {
+        lifecycleScope.launch {
+            val reminders = loadReminders(this@MainActivity)
+
+            reminders.forEach { reminder ->
+                scheduleReminder(this@MainActivity, reminder)
+            }
+        }
     }
+}
 }
 
 @Composable
@@ -378,7 +463,12 @@ fun HomeScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
-
+Text(
+    text = "Diagnostyka dokładnych alarmów: ${
+        canScheduleExactAlarms(context)
+    }",
+    modifier = Modifier.padding(8.dp)
+)
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
     var searchText by remember { mutableStateOf("") }
 
@@ -588,16 +678,23 @@ fun HomeScreen(
                         calendar.timeInMillis > System.currentTimeMillis()
                     }
 
-                    val pastReminders = filteredReminders.filter { reminder ->
-                        val calendar = java.util.Calendar.getInstance().apply {
-                            timeInMillis = reminder.date
-                            set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
-                            set(java.util.Calendar.MINUTE, reminder.minute)
-                            set(java.util.Calendar.SECOND, 0)
-                            set(java.util.Calendar.MILLISECOND, 0)
-                        }
-                        calendar.timeInMillis <= System.currentTimeMillis()
-                    }
+                    
+val pastReminders = filteredReminders.filter { reminder ->
+    if (reminder.repeatType != "NONE") {
+        false
+    } else {
+        val calendar = java.util.Calendar.getInstance().apply {
+            timeInMillis = reminder.date
+            set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
+            set(java.util.Calendar.MINUTE, reminder.minute)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+
+        calendar.timeInMillis <= System.currentTimeMillis()
+    }
+}
+
 
                     upcomingReminders.forEach { reminder ->
                         ReminderCard(

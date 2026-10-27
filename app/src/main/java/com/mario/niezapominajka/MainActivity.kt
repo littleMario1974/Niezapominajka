@@ -151,6 +151,7 @@ fun getNextReminderDate(reminder: Reminder): Long? {
 }
 
 
+
 fun scheduleReminder(
     context: Context,
     reminder: Reminder
@@ -191,31 +192,40 @@ fun scheduleReminder(
         set(java.util.Calendar.MILLISECOND, 0)
     }
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        if (alarmManager.canScheduleExactAlarms()) {
-            alarmManager.setExactAndAllowWhileIdle(
-                android.app.AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
-        } else {
-            val settingsIntent = android.content.Intent(
-                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
-            ).apply {
-                data = android.net.Uri.parse("package:${context.packageName}")
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
+    // Nie planujemy alarmu na termin, który już minął.
+    if (calendar.timeInMillis <= System.currentTimeMillis()) {
+        android.util.Log.e(
+            "Niezapominajka",
+            "Nie zaplanowano alarmu: termin już minął, ID=${reminder.id}"
+        )
+        return
+    }
 
-            context.startActivity(settingsIntent)
-        }
-    } else {
+    if (
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+        alarmManager.canScheduleExactAlarms()
+    ) {
         alarmManager.setExactAndAllowWhileIdle(
             android.app.AlarmManager.RTC_WAKEUP,
             calendar.timeInMillis,
             pendingIntent
         )
+    } else {
+        // Alarm rezerwowy: może nie uruchomić się dokładnie o wybranej minucie.
+        alarmManager.setAndAllowWhileIdle(
+            android.app.AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            pendingIntent
+        )
+
+        android.util.Log.w(
+            "Niezapominajka",
+            "Brak uprawnienia do alarmów dokładnych. " +
+                "Ustawiono alarm rezerwowy dla ID=${reminder.id}"
+        )
     }
 }
+
 
 fun cancelReminder(
     context: Context,

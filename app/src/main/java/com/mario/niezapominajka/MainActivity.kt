@@ -151,79 +151,71 @@ fun getNextReminderDate(reminder: Reminder): Long? {
 }
 
 
-
 fun scheduleReminder(
-    context: Context,
-    reminder: Reminder
+context: Context,
+reminder: Reminder
 ) {
-    val alarmManager =
-        context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+val alarmManager =
+context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
 
-    val intent = android.content.Intent(
-        context,
-        ReminderReceiver::class.java
-    ).apply {
-        putExtra("reminder_text", reminder.text)
-        putExtra("sound_enabled", reminder.soundEnabled)
-        putExtra("speak_text", reminder.speakText)
-        putExtra("voice_file_path", reminder.voiceFilePath)
-        putExtra("audio_uri", reminder.audioUri)
-        putExtra("reminder_id", reminder.id)
-        putExtra("repeat_type", reminder.repeatType)
-        putExtra("monthly_day", reminder.monthlyDay)
-        putExtra("reminder_date", reminder.date)
-        putExtra("reminder_hour", reminder.hour)
-        putExtra("reminder_minute", reminder.minute)
-    }
+val intent = android.content.Intent(  
+    context,  
+    ReminderReceiver::class.java  
+).apply {  
+    putExtra("reminder_text", reminder.text)  
+    putExtra("sound_enabled", reminder.soundEnabled)  
+    putExtra("speak_text", reminder.speakText)  
+    putExtra("voice_file_path", reminder.voiceFilePath)  
+    putExtra("audio_uri", reminder.audioUri)  
+    putExtra("reminder_id", reminder.id)  
+    putExtra("repeat_type", reminder.repeatType)  
+    putExtra("monthly_day", reminder.monthlyDay)  
+    putExtra("reminder_date", reminder.date)  
+    putExtra("reminder_hour", reminder.hour)  
+    putExtra("reminder_minute", reminder.minute)  
+}  
 
-    val pendingIntent = android.app.PendingIntent.getBroadcast(
-        context,
-        reminder.id.hashCode(),
-        intent,
-        android.app.PendingIntent.FLAG_UPDATE_CURRENT or
-            android.app.PendingIntent.FLAG_IMMUTABLE
-    )
+val pendingIntent = android.app.PendingIntent.getBroadcast(  
+    context,  
+    reminder.id.hashCode(),  
+    intent,  
+    android.app.PendingIntent.FLAG_UPDATE_CURRENT or  
+        android.app.PendingIntent.FLAG_IMMUTABLE  
+)  
 
-    val calendar = java.util.Calendar.getInstance().apply {
-        timeInMillis = reminder.date
-        set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)
-        set(java.util.Calendar.MINUTE, reminder.minute)
-        set(java.util.Calendar.SECOND, 0)
-        set(java.util.Calendar.MILLISECOND, 0)
-    }
+val calendar = java.util.Calendar.getInstance().apply {  
+    timeInMillis = reminder.date  
+    set(java.util.Calendar.HOUR_OF_DAY, reminder.hour)  
+    set(java.util.Calendar.MINUTE, reminder.minute)  
+    set(java.util.Calendar.SECOND, 0)  
+    set(java.util.Calendar.MILLISECOND, 0)  
+}  
 
-    // Nie planujemy alarmu na termin, który już minął.
-    if (calendar.timeInMillis <= System.currentTimeMillis()) {
-        android.util.Log.e(
-            "Niezapominajka",
-            "Nie zaplanowano alarmu: termin już minął, ID=${reminder.id}"
-        )
-        return
-    }
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {  
+    if (alarmManager.canScheduleExactAlarms()) {  
+        alarmManager.setExactAndAllowWhileIdle(  
+            android.app.AlarmManager.RTC_WAKEUP,  
+            calendar.timeInMillis,  
+            pendingIntent  
+        )  
+    } else {  
+        val settingsIntent = android.content.Intent(  
+            android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM  
+        ).apply {  
+            data = android.net.Uri.parse("package:${context.packageName}")  
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)  
+        }  
 
-    if (
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-        alarmManager.canScheduleExactAlarms()
-    ) {
-        alarmManager.setExactAndAllowWhileIdle(
-            android.app.AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            pendingIntent
-        )
-    } else {
-        // Alarm rezerwowy: może nie uruchomić się dokładnie o wybranej minucie.
-        alarmManager.setAndAllowWhileIdle(
-            android.app.AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            pendingIntent
-        )
+        context.startActivity(settingsIntent)  
+    }  
+} else {  
+    alarmManager.setExactAndAllowWhileIdle(  
+        android.app.AlarmManager.RTC_WAKEUP,  
+        calendar.timeInMillis,  
+        pendingIntent  
+    )  
+}
 
-        android.util.Log.w(
-            "Niezapominajka",
-            "Brak uprawnienia do alarmów dokładnych. " +
-                "Ustawiono alarm rezerwowy dla ID=${reminder.id}"
-        )
-    }
 }
 
 

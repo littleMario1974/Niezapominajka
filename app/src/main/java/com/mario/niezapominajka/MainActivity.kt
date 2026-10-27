@@ -246,6 +246,7 @@ fun cancelReminder(
 }
 
 class MainActivity : ComponentActivity() {
+private var lastExactAlarmPermission: Boolean? = null
     private var refreshVersion by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {

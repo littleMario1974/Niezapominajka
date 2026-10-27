@@ -159,22 +159,7 @@ reminder: Reminder
 val alarmManager =
 context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
 
-val intent = android.content.Intent(  
-    context,  
-    ReminderReceiver::class.java  
-).apply {  
-    putExtra("reminder_text", reminder.text)  
-    putExtra("sound_enabled", reminder.soundEnabled)  
-    putExtra("speak_text", reminder.speakText)  
-    putExtra("voice_file_path", reminder.voiceFilePath)  
-    putExtra("audio_uri", reminder.audioUri)  
-    putExtra("reminder_id", reminder.id)  
-    putExtra("repeat_type", reminder.repeatType)  
-    putExtra("monthly_day", reminder.monthlyDay)  
-    putExtra("reminder_date", reminder.date)  
-    putExtra("reminder_hour", reminder.hour)  
-    putExtra("reminder_minute", reminder.minute)  
-}  
+
 
 val pendingIntent = android.app.PendingIntent.getBroadcast(  
     context,  
@@ -236,6 +221,31 @@ if (reminder.repeatType != "NONE") {
         return
     }
 }
+
+val intent = android.content.Intent(
+    context,
+    ReminderReceiver::class.java
+).apply {
+    putExtra("reminder_text", reminder.text)
+    putExtra("sound_enabled", reminder.soundEnabled)
+    putExtra("speak_text", reminder.speakText)
+    putExtra("voice_file_path", reminder.voiceFilePath)
+    putExtra("audio_uri", reminder.audioUri)
+    putExtra("reminder_id", reminder.id)
+    putExtra("repeat_type", reminder.repeatType)
+    putExtra("monthly_day", reminder.monthlyDay)
+    putExtra("reminder_date", calendar.timeInMillis)
+    putExtra("reminder_hour", reminder.hour)
+    putExtra("reminder_minute", reminder.minute)
+}
+
+val pendingIntent = android.app.PendingIntent.getBroadcast(
+    context,
+    reminder.id.hashCode(),
+    intent,
+    android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+        android.app.PendingIntent.FLAG_IMMUTABLE
+)
 
 
 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {  

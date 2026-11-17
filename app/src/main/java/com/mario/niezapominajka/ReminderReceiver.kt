@@ -3,6 +3,9 @@ package com.mario.niezapominajka
 
 import android.Manifest
 import android.app.AlarmManager
+import android.app.KeyguardManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -17,11 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 private const val TAG = "Niezapominajka"
-private const val ACTION_NOTIFICATION_SNOOZE =
-    "com.mario.niezapominajka.NOTIFICATION_SNOOZE"
-
-private const val ACTION_NOTIFICATION_DISMISS =
-    "com.mario.niezapominajka.NOTIFICATION_DISMISS"
+private const val REMINDERS_CHANNEL_ID = "reminders_silent"
 
 private fun getNextReminderDate(
     date: Long,
@@ -142,75 +141,6 @@ private suspend fun updateReminderDate(
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        when (intent.action) {
-            ACTION_NOTIFICATION_SNOOZE -> {
-                val reminderId = intent.getLongExtra("reminder_id", -1L)
-
-                val snoozeIntent = Intent(
-                    context,
-                    ReminderReceiver::class.java
-                ).apply {
-                    putExtras(intent)
-                    action = null
-                    putExtra("is_snooze", true)
-                }
-
-                val snoozePendingIntent = PendingIntent.getBroadcast(
-                    context,
-                    reminderId.hashCode() xor 0x5A0E,
-                    snoozeIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or
-                            PendingIntent.FLAG_IMMUTABLE
-                )
-
-                val alarmManager = context.getSystemService(
-                    Context.ALARM_SERVICE
-                ) as AlarmManager
-
-                val snoozeTime =
-                    System.currentTimeMillis() + 5 * 60 * 1000L
-
-                if (
-                    Build.VERSION.SDK_INT < 31 ||
-                    alarmManager.canScheduleExactAlarms()
-                ) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        snoozeTime,
-                        snoozePendingIntent
-                    )
-                } else {
-                    alarmManager.setAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        snoozeTime,
-                        snoozePendingIntent
-                    )
-                }
-
-                NotificationManagerCompat.from(context)
-                    .cancel(reminderId.hashCode())
-
-                context.stopService(
-                    Intent().setClass(context, AlarmService::class.java)
-                )
-
-                return
-            }
-
-            ACTION_NOTIFICATION_DISMISS -> {
-                val reminderId = intent.getLongExtra("reminder_id", -1L)
-
-                NotificationManagerCompat.from(context)
-                    .cancel(reminderId.hashCode())
-
-                context.stopService(
-                    Intent().setClass(context, AlarmService::class.java)
-                )
-
-                return
-            }
-        }
-
         val reminderText =
             intent.getStringExtra("reminder_text") ?: "Masz przypomnienie"
 
@@ -410,7 +340,12 @@ class ReminderReceiver : BroadcastReceiver() {
         reminderId: Long,
         repeatType: String
     ) {
-        if (soundEnabled && !speakText) {
+        val keyguardManager = context.getSystemService(
+            Context.KEYGUARD_SERVICE
+        ) as KeyguardManager
+        val isDeviceLocked = keyguardManager.isKeyguardLocked
+
+        if (isDeviceLocked && soundEnabled && !speakText) {
             val serviceIntent = Intent(
                 context,
                 AlarmService::class.java
@@ -450,47 +385,28 @@ class ReminderReceiver : BroadcastReceiver() {
                     PendingIntent.FLAG_IMMUTABLE
         )
 
-        val snoozeActionIntent = Intent(
-            context,
-            ReminderReceiver::class.java
-        ).apply {
-            action = ACTION_NOTIFICATION_SNOOZE
-            putExtra("reminder_id", reminderId)
-            putExtra("reminder_text", reminderText)
-            putExtra("sound_enabled", soundEnabled)
-            putExtra("speak_text", speakText)
-            putExtra("voice_file_path", voiceFilePath)
-            putExtra("audio_uri", audioUri)
-            putExtra("repeat_type", repeatType)
+        val notificationManager = context.getSystemService(
+            Context.NOTIFICATION_SERVICE
+        ) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            notificationManager.getNotificationChannel(REMINDERS_CHANNEL_ID) == null
+        ) {
+            val silentChannel = NotificationChannel(
+                REMINDERS_CHANNEL_ID,
+                "Przypomnienia",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Ciche powiadomienia z aplikacji Niezapominajka"
+                setSound(null, null)
+                enableVibration(false)
+            }
+            notificationManager.createNotificationChannel(silentChannel)
         }
-
-        val snoozeAction = PendingIntent.getBroadcast(
-            context,
-            reminderId.hashCode() xor 0x5A0E,
-            snoozeActionIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or
-                    PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val dismissActionIntent = Intent(
-            context,
-            ReminderReceiver::class.java
-        ).apply {
-            action = ACTION_NOTIFICATION_DISMISS
-            putExtra("reminder_id", reminderId)
-        }
-
-        val dismissAction = PendingIntent.getBroadcast(
-            context,
-            reminderId.hashCode() xor 0x5D15,
-            dismissActionIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or
-                    PendingIntent.FLAG_IMMUTABLE
-        )
 
         val notification = NotificationCompat.Builder(
             context,
-            "reminders"
+            REMINDERS_CHANNEL_ID
         )
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Niezapominajka")
@@ -500,16 +416,6 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(false)
             .setOngoing(true)
             .setFullScreenIntent(alarmPendingIntent, true)
-            .addAction(
-                android.R.drawable.ic_lock_idle_alarm,
-                "Drzemka 5 min",
-                snoozeAction
-            )
-            .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel,
-                "Wyłącz",
-                dismissAction
-            )
             .build()
 
         if (

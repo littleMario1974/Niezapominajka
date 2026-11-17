@@ -47,7 +47,6 @@ class AlarmActivity : ComponentActivity() {
     private var speechRunnable: Runnable? = null
     private var reminderSpeechText: String = ""
     private var speechEnabled: Boolean = false
-    private var activeReminderId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,7 +60,6 @@ class AlarmActivity : ComponentActivity() {
             intent.getStringExtra("reminder_text") ?: "Przypomnienie"
 
         val reminderId = intent.getLongExtra("reminder_id", -1L)
-        activeReminderId = reminderId
         val soundEnabled =
             intent.getBooleanExtra("sound_enabled", true)
 

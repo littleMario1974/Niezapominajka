@@ -942,6 +942,10 @@ fun AddReminderScreen(
         )
     }
 
+    var selectedVoiceFilePath by remember(reminderToEdit?.id) {
+        mutableStateOf(reminderToEdit?.voiceFilePath)
+    }
+
     val audioPickerLauncher =
         androidx.activity.compose.rememberLauncherForActivityResult(
             contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
@@ -1050,6 +1054,7 @@ fun AddReminderScreen(
             !soundEnabled ||
             speakText ||
             selectedAudioUri != null ||
+            selectedVoiceFilePath != null ||
             repeatType != "NONE"
     } else {
         reminderText != reminderToEdit.text ||
@@ -1059,6 +1064,7 @@ fun AddReminderScreen(
             soundEnabled != reminderToEdit.soundEnabled ||
             speakText != reminderToEdit.speakText ||
             selectedAudioUri?.toString() != reminderToEdit.audioUri ||
+            selectedVoiceFilePath != reminderToEdit.voiceFilePath ||
             repeatType != reminderToEdit.repeatType
     }
 
@@ -1107,6 +1113,7 @@ fun AddReminderScreen(
                     hour = selectedHour,
                     minute = selectedMinute,
                     soundEnabled = soundEnabled,
+                    voiceFilePath = selectedVoiceFilePath,
                     audioUri = selectedAudioUri?.toString(),
                     repeatType = repeatType,
                     monthlyDay = monthlyDay,
@@ -1308,6 +1315,7 @@ fun AddReminderScreen(
                         textToSpeech.stop()
                         selectedAudioUri = null
                         selectedAudioName = null
+                        selectedVoiceFilePath = null
 
                         mediaPlayer?.let { player ->
                             try {

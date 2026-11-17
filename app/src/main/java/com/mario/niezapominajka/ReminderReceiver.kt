@@ -20,7 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 private const val TAG = "Niezapominajka"
-private const val REMINDERS_CHANNEL_ID = "reminders_silent"
+private const val REMINDERS_CHANNEL_ID = "reminders_alarm_v2"
 
 private fun getNextReminderDate(
     date: Long,
@@ -418,8 +418,9 @@ class ReminderReceiver : BroadcastReceiver() {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Niezapominajka")
             .setContentText(reminderText)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(false)
             .setOngoing(true)
 

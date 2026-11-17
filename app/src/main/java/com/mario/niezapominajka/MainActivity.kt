@@ -870,7 +870,11 @@ fun ReminderCard(
             Text(
                 text = when {
                     reminder.speakText -> "🗣️ Odczyt treści na głos"
-                    reminder.soundEnabled -> "🔊 Dźwięk i wibracja"
+                    reminder.soundEnabled &&
+                        (!reminder.audioUri.isNullOrBlank() ||
+                            !reminder.voiceFilePath.isNullOrBlank()) ->
+                        "🎵 Wybrany plik audio"
+                    reminder.soundEnabled -> "🔊 Dźwięk + wibracja"
                     else -> "📳 Tylko wibracja"
                 },
                 style = MaterialTheme.typography.bodyMedium,

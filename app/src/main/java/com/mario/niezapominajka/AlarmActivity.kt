@@ -68,6 +68,7 @@ class AlarmActivity : ComponentActivity() {
         val speakText =
             intent.getBooleanExtra("speak_text", false)
         val repeatType = intent.getStringExtra("repeat_type") ?: "NONE"
+        val shouldVibrate = intent.getBooleanExtra("should_vibrate", false)
         speechEnabled = speakText
         reminderSpeechText = reminderText
 
@@ -111,7 +112,7 @@ class AlarmActivity : ComponentActivity() {
         val audioUri =
             intent.getStringExtra("audio_uri")
 
-        startAlarm()
+        startAlarm(shouldVibrate)
         setContent {
             var dismissed by remember { mutableStateOf(false) }
 
@@ -293,7 +294,9 @@ class AlarmActivity : ComponentActivity() {
         }
     }
 
-    private fun startAlarm() {
+    private fun startAlarm(shouldVibrate: Boolean) {
+        if (!shouldVibrate) return
+
         vibrator =
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 val vibratorManager =

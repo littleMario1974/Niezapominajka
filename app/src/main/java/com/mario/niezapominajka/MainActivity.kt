@@ -1301,7 +1301,34 @@ fun AddReminderScreen(
             ) {
 
                 Button(
-                    onClick = { soundEnabled = true },
+                    onClick = {
+                        soundEnabled = true
+                        speakText = false
+                        isSpeakingPreview = false
+                        textToSpeech.stop()
+                        selectedAudioUri = null
+                        selectedAudioName = null
+
+                        mediaPlayer?.let { player ->
+                            try {
+                                if (player.isPlaying) player.stop()
+                            } catch (_: Exception) {
+                            } finally {
+                                player.release()
+                            }
+                        }
+                        mediaPlayer = null
+
+                        defaultAlarmPlayer?.let { player ->
+                            try {
+                                if (player.isPlaying) player.stop()
+                            } catch (_: Exception) {
+                            } finally {
+                                player.release()
+                            }
+                        }
+                        defaultAlarmPlayer = null
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .height(60.dp),

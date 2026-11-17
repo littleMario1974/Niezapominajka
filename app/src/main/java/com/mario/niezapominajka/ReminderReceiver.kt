@@ -411,20 +411,25 @@ class ReminderReceiver : BroadcastReceiver() {
             notificationManager.createNotificationChannel(silentChannel)
         }
 
-        val notification = NotificationCompat.Builder(
+        val notificationBuilder = NotificationCompat.Builder(
             context,
             REMINDERS_CHANNEL_ID
         )
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Niezapominajka")
             .setContentText(reminderText)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(false)
             .setOngoing(true)
-            .setFullScreenIntent(alarmPendingIntent, true)
-            .build()
+
+        // Ekran alarmu uruchamiamy tylko przy zablokowanym telefonie.
+        // Przy odblokowanym pozostaje zwykły, widoczny i cichy baner.
+        if (isDeviceLocked) {
+            notificationBuilder.setFullScreenIntent(alarmPendingIntent, true)
+        }
+
+        val notification = notificationBuilder.build()
 
         if (
             Build.VERSION.SDK_INT < 33 ||

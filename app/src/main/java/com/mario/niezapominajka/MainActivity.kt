@@ -183,8 +183,9 @@ fun getNextReminderDate(reminder: Reminder): Long? {
 }
 
 fun scheduleReminder(
-context: Context,
-reminder: Reminder
+    context: Context,
+    reminder: Reminder,
+    requestPermissionIfMissing: Boolean = true
 ) {
 val alarmManager =
 context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
@@ -286,16 +287,29 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             calendar.timeInMillis,  
             pendingIntent  
         )  
-    } else {  
-        val settingsIntent = android.content.Intent(  
-            android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM  
-        ).apply {  
-            data = android.net.Uri.parse("package:${context.packageName}")  
-            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)  
-        }  
-
-        context.startActivity(settingsIntent)  
-    }  
+    } else {
+        if (requestPermissionIfMissing) {
+            val settingsIntent = android.content.Intent(
+                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+            ).apply {
+                data = android.net.Uri.parse("package:${context.packageName}")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(settingsIntent)
+        } else {
+            // Odbiornik rozruchu działa w tle i nie może otwierać ustawień.
+            // Bez zgody na alarmy dokładne ustawiamy alarm rezerwowy.
+            alarmManager.setAndAllowWhileIdle(
+                android.app.AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+            android.util.Log.w(
+                "Niezapominajka",
+                "Brak zgody na alarmy dokładne po restarcie; ustawiono alarm rezerwowy."
+            )
+        }
+    }
 } else {  
     alarmManager.setExactAndAllowWhileIdle(  
         android.app.AlarmManager.RTC_WAKEUP,  

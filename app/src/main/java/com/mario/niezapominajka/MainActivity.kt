@@ -489,13 +489,7 @@ fun HomeScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
-Text(
-    text = "Diagnostyka dokładnych alarmów: ${
-        canScheduleExactAlarms(context)
-    }",
-    modifier = Modifier.padding(8.dp)
-)
-    var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
+var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
     var searchText by remember { mutableStateOf("") }
 
     val sortedReminders = remember(reminders) {
@@ -977,8 +971,37 @@ fun AddReminderScreen(
         mutableStateOf(false)
     }
 
+    var ttsReady by remember(context) {
+        mutableStateOf(false)
+    }
+
     val textToSpeech = remember(context) {
-        android.speech.tts.TextToSpeech(context, null)
+        android.speech.tts.TextToSpeech(context) { status ->
+            ttsReady = status == android.speech.tts.TextToSpeech.SUCCESS
+        }
+    }
+
+    DisposableEffect(textToSpeech) {
+        onDispose {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+            mediaPlayer?.let { player ->
+                try {
+                    if (player.isPlaying) player.stop()
+                } catch (_: Exception) {
+                } finally {
+                    player.release()
+                }
+            }
+            defaultAlarmPlayer?.let { player ->
+                try {
+                    if (player.isPlaying) player.stop()
+                } catch (_: Exception) {
+                } finally {
+                    player.release()
+                }
+            }
+        }
     }
 
     var repeatType by remember(reminderToEdit?.id) {
@@ -1020,13 +1043,18 @@ fun AddReminderScreen(
             selectedDate != null ||
             selectedHour != 12 ||
             selectedMinute != 0 ||
-            !soundEnabled
+            !soundEnabled ||
+            speakText ||
+            selectedAudioUri != null ||
+            repeatType != "NONE"
     } else {
         reminderText != reminderToEdit.text ||
             selectedDate != reminderToEdit.date ||
             selectedHour != reminderToEdit.hour ||
             selectedMinute != reminderToEdit.minute ||
             soundEnabled != reminderToEdit.soundEnabled ||
+            speakText != reminderToEdit.speakText ||
+            selectedAudioUri?.toString() != reminderToEdit.audioUri ||
             repeatType != reminderToEdit.repeatType
     }
 
@@ -1350,11 +1378,19 @@ fun AddReminderScreen(
 
 
                         if (speakText) {
-                            if (textToSpeech.isSpeaking || isSpeakingPreview) {
+                            if (!ttsReady) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Syntezator mowy jeszcze się uruchamia.",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            } else if (textToSpeech.isSpeaking || isSpeakingPreview) {
                                 textToSpeech.stop()
                                 isSpeakingPreview = false
                             } else {
-                                val result = textToSpeech.setLanguage(Locale.getDefault())
+                                val result = textToSpeech.setLanguage(
+                                    Locale.forLanguageTag("pl-PL")
+                                )
 
                                 if (
                                     result != android.speech.tts.TextToSpeech.LANG_MISSING_DATA &&

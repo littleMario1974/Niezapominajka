@@ -344,6 +344,12 @@ class ReminderReceiver : BroadcastReceiver() {
             Context.KEYGUARD_SERVICE
         ) as KeyguardManager
         val isDeviceLocked = keyguardManager.isKeyguardLocked
+        val shouldVibrate = isDeviceLocked &&
+            !speakText &&
+            (
+                !soundEnabled ||
+                    (audioUri.isNullOrBlank() && voiceFilePath.isNullOrBlank())
+            )
 
         if (isDeviceLocked && soundEnabled && !speakText) {
             val serviceIntent = Intent(
@@ -373,6 +379,7 @@ class ReminderReceiver : BroadcastReceiver() {
             putExtra("speak_text", speakText)
             putExtra("voice_file_path", voiceFilePath)
             putExtra("audio_uri", audioUri)
+            putExtra("should_vibrate", shouldVibrate)
             putExtra("reminder_id", reminderId)
             putExtra("repeat_type", repeatType)
         }
@@ -412,6 +419,7 @@ class ReminderReceiver : BroadcastReceiver() {
             .setContentTitle("Niezapominajka")
             .setContentText(reminderText)
             .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(false)
             .setOngoing(true)

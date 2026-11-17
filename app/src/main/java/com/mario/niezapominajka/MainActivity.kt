@@ -946,6 +946,10 @@ fun AddReminderScreen(
         mutableStateOf(reminderToEdit?.voiceFilePath)
     }
 
+    var speakText by remember(reminderToEdit?.id) {
+        mutableStateOf(reminderToEdit?.speakText ?: false)
+    }
+
     val audioPickerLauncher =
         androidx.activity.compose.rememberLauncherForActivityResult(
             contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
@@ -962,6 +966,7 @@ fun AddReminderScreen(
 
                 selectedAudioUri = uri
                 selectedAudioName = uri.lastPathSegment
+                speakText = false
             }
         }
 
@@ -971,9 +976,6 @@ fun AddReminderScreen(
 
     var soundEnabled by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.soundEnabled ?: true)
-    }
-    var speakText by remember(reminderToEdit?.id) {
-        mutableStateOf(reminderToEdit?.speakText ?: false)
     }
     var isSpeakingPreview by remember {
         mutableStateOf(false)

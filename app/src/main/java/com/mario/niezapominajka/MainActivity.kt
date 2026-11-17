@@ -981,29 +981,6 @@ fun AddReminderScreen(
         }
     }
 
-    DisposableEffect(textToSpeech) {
-        onDispose {
-            textToSpeech.stop()
-            textToSpeech.shutdown()
-            mediaPlayer?.let { player ->
-                try {
-                    if (player.isPlaying) player.stop()
-                } catch (_: Exception) {
-                } finally {
-                    player.release()
-                }
-            }
-            defaultAlarmPlayer?.let { player ->
-                try {
-                    if (player.isPlaying) player.stop()
-                } catch (_: Exception) {
-                } finally {
-                    player.release()
-                }
-            }
-        }
-    }
-
     var repeatType by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.repeatType ?: "NONE")
     }
@@ -1035,6 +1012,29 @@ fun AddReminderScreen(
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var defaultAlarmPlayer by remember {
         mutableStateOf<MediaPlayer?>(null)
+    }
+
+    DisposableEffect(textToSpeech) {
+        onDispose {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+            mediaPlayer?.let { player ->
+                try {
+                    if (player.isPlaying) player.stop()
+                } catch (_: Exception) {
+                } finally {
+                    player.release()
+                }
+            }
+            defaultAlarmPlayer?.let { player ->
+                try {
+                    if (player.isPlaying) player.stop()
+                } catch (_: Exception) {
+                } finally {
+                    player.release()
+                }
+            }
+        }
     }
     
 

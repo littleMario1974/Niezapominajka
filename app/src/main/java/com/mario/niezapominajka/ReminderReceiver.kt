@@ -275,9 +275,23 @@ class ReminderReceiver : BroadcastReceiver() {
         val isDeviceLocked = keyguardManager.isKeyguardLocked
         val shouldVibrate = isDeviceLocked && vibrationEnabled
 
+        // Przy odblokowanym telefonie wyświetlamy trwały, cichy baner.
+        if (!isDeviceLocked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            android.provider.Settings.canDrawOverlays(context)
+        ) {
+            try {
+                context.startForegroundService(
+                    Intent(context, PersistentBannerService::class.java).apply {
+                        putExtra("reminder_text", reminderText)
+                        putExtra("reminder_id", reminderId)
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Nie udało się wyświetlić trwałego banera.", e)
+            }
+        }
+
         // Dźwięk i TTS uruchamiamy wyłącznie przy zablokowanym telefonie.
-        // Gdy użytkownik korzysta z telefonu, przypomnienie ma być tylko
-        // cichym banerem — bez działającej w tle usługi odtwarzającej alarm.
         if (isDeviceLocked && (soundEnabled || speakText)) {
             val serviceIntent = Intent(
                 context,

@@ -15,7 +15,15 @@ import kotlinx.coroutines.launch
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        val action = intent.action
+        if (
+            action != Intent.ACTION_BOOT_COMPLETED &&
+            action != Intent.ACTION_TIME_CHANGED &&
+            action != Intent.ACTION_TIMEZONE_CHANGED &&
+            action != Intent.ACTION_MY_PACKAGE_REPLACED
+        ) return
+
+        Log.i(TAG, "Odtwarzanie harmonogramu po zdarzeniu: $action")
 
         val pendingResult = goAsync()
         val appContext = context.applicationContext

@@ -936,6 +936,18 @@ fun AddReminderScreen(
         mutableStateOf(reminderToEdit?.speakText ?: false)
     }
 
+    var soundEnabled by remember(reminderToEdit?.id) {
+        mutableStateOf(reminderToEdit?.soundEnabled ?: true)
+    }
+    var vibrationEnabled by remember(reminderToEdit?.id) {
+        mutableStateOf(
+            reminderToEdit?.vibrationEnabled
+                ?: (reminderToEdit?.speakText != true &&
+                    reminderToEdit?.audioUri.isNullOrBlank() &&
+                    reminderToEdit?.voiceFilePath.isNullOrBlank())
+        )
+    }
+
     val audioPickerLauncher =
         androidx.activity.compose.rememberLauncherForActivityResult(
             contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
@@ -962,17 +974,6 @@ fun AddReminderScreen(
         mutableStateOf(reminderToEdit?.text ?: "")
     }
 
-    var soundEnabled by remember(reminderToEdit?.id) {
-        mutableStateOf(reminderToEdit?.soundEnabled ?: true)
-    }
-    var vibrationEnabled by remember(reminderToEdit?.id) {
-        mutableStateOf(
-            reminderToEdit?.vibrationEnabled
-                ?: (reminderToEdit?.speakText != true &&
-                    reminderToEdit?.audioUri.isNullOrBlank() &&
-                    reminderToEdit?.voiceFilePath.isNullOrBlank())
-        )
-    }
     var isSpeakingPreview by remember {
         mutableStateOf(false)
     }

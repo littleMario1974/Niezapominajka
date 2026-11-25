@@ -1379,181 +1379,192 @@ fun AddReminderScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (soundEnabled) {
-                Button(
-                    onClick = {
-                        audioPickerLauncher.launch(arrayOf("audio/*"))
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Text("📁 Wybierz plik audio")
-                }
+            Button(
+                onClick = {
+                    audioPickerLauncher.launch(arrayOf("audio/*"))
+                },
+                enabled = soundEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = MaterialTheme.shapes.large,
+                colors = ButtonDefaults.buttonColors(
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text("📁 Wybierz plik audio")
             }
 
-            if (soundEnabled || speakText) {
-                Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-                Button(
-                    onClick = {
+            Button(
+                onClick = {
+                    if (speakText) {
+                        if (!ttsReady) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Syntezator mowy jeszcze się uruchamia.",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } else if (textToSpeech.isSpeaking || isSpeakingPreview) {
+                            textToSpeech.stop()
+                            isSpeakingPreview = false
+                        } else {
+                            val result = textToSpeech.setLanguage(
+                                Locale.forLanguageTag("pl-PL")
+                            )
 
+                            if (
+                                result != android.speech.tts.TextToSpeech.LANG_MISSING_DATA &&
+                                result != android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED
+                            ) {
+                                textToSpeech.setOnUtteranceProgressListener(
+                                    object : android.speech.tts.UtteranceProgressListener() {
+                                        override fun onStart(utteranceId: String?) {
+                                            isSpeakingPreview = true
+                                        }
 
-                        if (speakText) {
-                            if (!ttsReady) {
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Syntezator mowy jeszcze się uruchamia.",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            } else if (textToSpeech.isSpeaking || isSpeakingPreview) {
-                                textToSpeech.stop()
-                                isSpeakingPreview = false
-                            } else {
-                                val result = textToSpeech.setLanguage(
-                                    Locale.forLanguageTag("pl-PL")
+                                        override fun onDone(utteranceId: String?) {
+                                            isSpeakingPreview = false
+                                        }
+
+                                        override fun onError(utteranceId: String?) {
+                                            isSpeakingPreview = false
+                                        }
+                                    }
                                 )
 
-                                if (
-                                    result != android.speech.tts.TextToSpeech.LANG_MISSING_DATA &&
-                                    result != android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED
-                                ) {
-                                    textToSpeech.setOnUtteranceProgressListener(
-                                        object : android.speech.tts.UtteranceProgressListener() {
-                                            override fun onStart(utteranceId: String?) {
-                                                isSpeakingPreview = true
-                                            }
+                                val resultSpeak = textToSpeech.speak(
+                                    reminderText,
+                                    android.speech.tts.TextToSpeech.QUEUE_FLUSH,
+                                    null,
+                                    "reminder_preview"
+                                )
 
-                                            override fun onDone(utteranceId: String?) {
-                                                isSpeakingPreview = false
-                                            }
-
-                                            override fun onError(utteranceId: String?) {
-                                                isSpeakingPreview = false
-                                            }
-                                        }
-                                    )
-
-                                    val resultSpeak = textToSpeech.speak(
-                                        reminderText,
-                                        android.speech.tts.TextToSpeech.QUEUE_FLUSH,
-                                        null,
-                                        "reminder_preview"
-                                    )
-
-                                    if (resultSpeak == android.speech.tts.TextToSpeech.ERROR) {
-                                        isSpeakingPreview = false
-                                    }
+                                if (resultSpeak == android.speech.tts.TextToSpeech.ERROR) {
+                                    isSpeakingPreview = false
                                 }
                             }
-                        } else if (selectedAudioUri != null) {
+                        }
+                    } else if (selectedAudioUri != null) {
+                        if (mediaPlayer?.isPlaying == true) {
+                            mediaPlayer?.stop()
+                            mediaPlayer?.release()
+                            mediaPlayer = null
+                        } else {
+                            try {
+                                defaultAlarmPlayer?.release()
+                                defaultAlarmPlayer = null
+                                mediaPlayer?.release()
 
-
-                            if (mediaPlayer?.isPlaying == true) {
-                                mediaPlayer?.stop()
+                                mediaPlayer = MediaPlayer().apply {
+                                    setDataSource(context, selectedAudioUri!!)
+                                    setOnCompletionListener {
+                                        release()
+                                        mediaPlayer = null
+                                    }
+                                    prepare()
+                                    start()
+                                }
+                            } catch (_: Exception) {
                                 mediaPlayer?.release()
                                 mediaPlayer = null
-                            } else {
-                                try {
-                                    defaultAlarmPlayer?.release()
-                                    defaultAlarmPlayer = null
-                                    mediaPlayer?.release()
+                            }
+                        }
+                    } else {
+                        if (defaultAlarmPlayer != null) {
+                            try {
+                                defaultAlarmPlayer?.stop()
+                            } catch (_: Exception) {
+                            }
+                            defaultAlarmPlayer?.release()
+                            defaultAlarmPlayer = null
+                        } else {
+                            try {
+                                mediaPlayer?.release()
+                                mediaPlayer = null
 
-                                    mediaPlayer = MediaPlayer().apply {
-                                        setDataSource(context, selectedAudioUri!!)
+                                val alarmUri =
+                                    android.media.RingtoneManager.getDefaultUri(
+                                        android.media.RingtoneManager.TYPE_ALARM
+                                    ) ?: android.media.RingtoneManager.getDefaultUri(
+                                        android.media.RingtoneManager.TYPE_NOTIFICATION
+                                    )
+
+                                if (alarmUri != null) {
+                                    defaultAlarmPlayer = MediaPlayer().apply {
+                                        setDataSource(context, alarmUri)
                                         setOnCompletionListener {
                                             release()
-                                            mediaPlayer = null
+                                            defaultAlarmPlayer = null
                                         }
                                         prepare()
                                         start()
                                     }
-                                } catch (_: Exception) {
-                                    mediaPlayer?.release()
-                                    mediaPlayer = null
                                 }
-                            }
-                        } else {
-                            if (defaultAlarmPlayer != null) {
-                                try {
-                                    defaultAlarmPlayer?.stop()
-                                } catch (_: Exception) {
-                                }
+                            } catch (_: Exception) {
                                 defaultAlarmPlayer?.release()
                                 defaultAlarmPlayer = null
-                            } else {
-                                try {
-                                    mediaPlayer?.release()
-                                    mediaPlayer = null
-
-                                    val alarmUri =
-                                        android.media.RingtoneManager.getDefaultUri(
-                                            android.media.RingtoneManager.TYPE_ALARM
-                                        ) ?: android.media.RingtoneManager.getDefaultUri(
-                                            android.media.RingtoneManager.TYPE_NOTIFICATION
-                                        )
-
-                                    if (alarmUri != null) {
-                                        defaultAlarmPlayer = MediaPlayer().apply {
-                                            setDataSource(context, alarmUri)
-                                            setOnCompletionListener {
-                                                release()
-                                                defaultAlarmPlayer = null
-                                            }
-                                            prepare()
-                                            start()
-                                        }
-                                    }
-                                } catch (_: Exception) {
-                                    defaultAlarmPlayer?.release()
-                                    defaultAlarmPlayer = null
-                                }
                             }
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Text(
-                        when {
-                            speakText && isSpeakingPreview ->
-                                "⏹ Zatrzymaj odsłuch"
+                    }
+                },
+                enabled = soundEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = MaterialTheme.shapes.large,
+                colors = ButtonDefaults.buttonColors(
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text(
+                    when {
+                        speakText && isSpeakingPreview ->
+                            "⏹ Zatrzymaj odsłuch"
 
-                            speakText ->
-                                "▶ Odsłuchaj odczyt"
+                        speakText ->
+                            "▶ Odsłuchaj odczyt"
 
-                            mediaPlayer?.isPlaying == true ||
-                                    defaultAlarmPlayer != null ->
-                                "⏹ Zatrzymaj odsłuch"
+                        mediaPlayer?.isPlaying == true ||
+                                defaultAlarmPlayer != null ->
+                            "⏹ Zatrzymaj odsłuch"
 
-                            selectedAudioUri != null ->
-                                "▶ Odsłuchaj plik audio"
+                        selectedAudioUri != null ->
+                            "▶ Odsłuchaj plik audio"
 
-                            else ->
-                                "▶ Odsłuchaj zwykły alarm"
-                        }
-                    )
-                }
+                        else ->
+                            "▶ Odsłuchaj zwykły alarm"
+                    }
+                )
             }
-
 
             if (selectedAudioName != null &&
                 selectedAudioUri != null &&
-                soundEnabled &&
                 !speakText
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Wybrano: $selectedAudioName",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = if (soundEnabled) {
+                        "Wybrano plik: $selectedAudioName"
+                    } else {
+                        "Wybrano plik: $selectedAudioName (nieaktywny przy wibracji)"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-
-            
+            if (!soundEnabled) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Opcje dźwięku są nieaktywne przy ustawieniu „Tylko wibracja”.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 

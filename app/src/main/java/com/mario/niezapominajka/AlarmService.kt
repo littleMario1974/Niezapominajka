@@ -48,7 +48,7 @@ class AlarmService : Service() {
             return START_NOT_STICKY
         }
 
-        val reminderId = intent?.getLongExtra(EXTRA_REMINDER_ID, -1L) ?: -1L
+        val reminderId = commandIntent.getLongExtra(EXTRA_REMINDER_ID, -1L)
         if (reminderId == -1L) {
             Log.e(TAG, "Odrzucono alarm bez prawidłowego ID.")
             return START_NOT_STICKY

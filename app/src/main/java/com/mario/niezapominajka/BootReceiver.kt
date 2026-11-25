@@ -31,9 +31,39 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val reminders = loadReminders(appContext)
+                val now = System.currentTimeMillis()
                 var scheduled = 0
+                var datesUpdated = false
 
-                reminders.forEach { reminder ->
+                val normalizedReminders = reminders.map { reminder ->
+                    if (reminder.repeatType == "NONE") {
+                        reminder
+                    } else {
+                        val nextDate = nextFutureOccurrence(
+                            date = reminder.date,
+                            hour = reminder.hour,
+                            minute = reminder.minute,
+                            repeatType = reminder.repeatType,
+                            monthlyDay = reminder.monthlyDay,
+                            nowMillis = now
+                        )
+
+                        if (nextDate != null && nextDate != reminder.date) {
+                            datesUpdated = true
+                            reminder.copy(date = nextDate)
+                        } else {
+                            reminder
+                        }
+                    }
+                }
+
+                // Po dłuższym wyłączeniu telefonu zapisujemy od razu najbliższy
+                // przyszły termin, aby kolejne restarty nie liczyły od starej daty.
+                if (datesUpdated) {
+                    saveReminders(appContext, normalizedReminders)
+                }
+
+                normalizedReminders.forEach { reminder ->
                     try {
                         scheduleReminder(
                             context = appContext,
@@ -52,8 +82,8 @@ class BootReceiver : BroadcastReceiver() {
 
                 Log.i(
                     TAG,
-                    "Po ponownym uruchomieniu odtworzono harmonogram: " +
-                        "$scheduled z ${reminders.size} przypomnień."
+                    "Odtworzono harmonogram: $scheduled z ${reminders.size} przypomnień; " +
+                        "zaktualizowano daty: $datesUpdated."
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Nie udało się odtworzyć przypomnień po restarcie.", e)

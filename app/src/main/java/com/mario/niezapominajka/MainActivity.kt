@@ -146,35 +146,25 @@ val calendar = java.util.Calendar.getInstance().apply {
     }
 
 if (reminder.repeatType != "NONE") {
-    val targetDay = if (reminder.monthlyDay in 1..31) {
-        reminder.monthlyDay
-    } else {
-        calendar.get(java.util.Calendar.DAY_OF_MONTH)
-    }
+    val nextDate = nextFutureOccurrence(
+        date = reminder.date,
+        hour = reminder.hour,
+        minute = reminder.minute,
+        repeatType = reminder.repeatType,
+        monthlyDay = reminder.monthlyDay,
+        nowMillis = System.currentTimeMillis()
+    )
 
-    var attempts = 0
-
-    while (calendar.timeInMillis <= System.currentTimeMillis() && attempts < 500) {
-        when (reminder.repeatType) {
-            "DAILY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
-
-            "WEEKLY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
-
-            "MONTHLY" -> advanceMonthlyOccurrence(calendar, targetDay)
-
-            else -> break
-        }
-
-        attempts++
-    }
-
-    if (calendar.timeInMillis <= System.currentTimeMillis()) {
+    if (nextDate == null) {
         android.util.Log.e(
             "Niezapominajka",
-            "Nie udało się wyznaczyć przyszłego terminu alarmu."
+            "Nie udało się wyznaczyć przyszłego terminu alarmu: " +
+                "ID=${reminder.id}, repeat=${reminder.repeatType}"
         )
         return
     }
+
+    calendar.timeInMillis = nextDate
 }
 
 val intent = android.content.Intent(

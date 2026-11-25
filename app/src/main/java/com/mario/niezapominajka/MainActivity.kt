@@ -1159,105 +1159,105 @@ fun AddReminderScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Button(
-                onClick = { showDatePicker = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = MaterialTheme.shapes.large
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
-                Text(
-                    text = if (selectedDate == null) {
-                        "Wybierz datę"
-                    } else {
-                        "Data: ${dateFormat.format(Date(selectedDate!!))}"
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Termin przypomnienia", style = MaterialTheme.typography.titleMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showDatePicker = true },
+                            modifier = Modifier.weight(1f).heightIn(min = 64.dp),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("DATA", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    selectedDate?.let { dateFormat.format(Date(it)) } ?: "Wybierz",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = { showTimePicker = true },
+                            modifier = Modifier.weight(1f).heightIn(min = 64.dp),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("GODZINA", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
+                        }
                     }
-                )
+                }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Button(
-                onClick = { showTimePicker = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text(
-                    text = String.format(
-                        Locale.getDefault(),
-                        "Godzina: %02d:%02d",
-                        selectedHour,
-                        selectedMinute
-                    )
-                )
-            }
-
-            Text(
-                text = "Powtarzanie",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             var repeatMenuExpanded by remember {
                 mutableStateOf(false)
             }
 
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = { repeatMenuExpanded = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = MaterialTheme.shapes.large
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        when (repeatType) {
-                            "DAILY" -> "Codziennie"
-                            "WEEKLY" -> "Co tydzień"
-                            "MONTHLY" -> "Co miesiąc"
-                            else -> "Nie powtarzaj"
+                    Text("Powtarzanie", style = MaterialTheme.typography.titleMedium)
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { repeatMenuExpanded = true },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Text(
+                                when (repeatType) {
+                                    "DAILY" -> "✓ Codziennie"
+                                    "WEEKLY" -> "✓ Co tydzień"
+                                    "MONTHLY" -> "✓ Co miesiąc"
+                                    else -> "✓ Nie powtarzaj"
+                                }
+                            )
                         }
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = repeatMenuExpanded,
-                    onDismissRequest = { repeatMenuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Nie powtarzaj") },
-                        onClick = {
-                            repeatType = "NONE"
-                            repeatMenuExpanded = false
+                        DropdownMenu(
+                            expanded = repeatMenuExpanded,
+                            onDismissRequest = { repeatMenuExpanded = false }
+                        ) {
+                            DropdownMenuItem(text = { Text("Nie powtarzaj") }, onClick = {
+                                repeatType = "NONE"
+                                repeatMenuExpanded = false
+                            })
+                            DropdownMenuItem(text = { Text("Codziennie") }, onClick = {
+                                repeatType = "DAILY"
+                                repeatMenuExpanded = false
+                            })
+                            DropdownMenuItem(text = { Text("Co tydzień") }, onClick = {
+                                repeatType = "WEEKLY"
+                                repeatMenuExpanded = false
+                            })
+                            DropdownMenuItem(text = { Text("Co miesiąc") }, onClick = {
+                                repeatType = "MONTHLY"
+                                repeatMenuExpanded = false
+                            })
                         }
-                    )
-
-                    DropdownMenuItem(
-                        text = { Text("Codziennie") },
-                        onClick = {
-                            repeatType = "DAILY"
-                            repeatMenuExpanded = false
-                        }
-                    )
-
-                    DropdownMenuItem(
-                        text = { Text("Co tydzień") },
-                        onClick = {
-                            repeatType = "WEEKLY"
-                            repeatMenuExpanded = false
-                        }
-                    )
-
-                    DropdownMenuItem(
-                        text = { Text("Co miesiąc") },
-                        onClick = {
-                            repeatType = "MONTHLY"
-                            repeatMenuExpanded = false
-                        }
-                    )
+                    }
                 }
             }
 
@@ -1567,6 +1567,52 @@ fun AddReminderScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("Podsumowanie", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        reminderText.ifBlank { "Nie wpisano treści przypomnienia" },
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Termin: ${selectedDate?.let { dateFormat.format(Date(it)) } ?: "nie wybrano"} • " +
+                            String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Powtarzanie: " + when (repeatType) {
+                            "DAILY" -> "Codziennie"
+                            "WEEKLY" -> "Co tydzień"
+                            "MONTHLY" -> "Co miesiąc"
+                            else -> "Nie powtarzaj"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Alarm: " + if (soundEnabled) "Dźwięk + wibracja" else "Tylko wibracja",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Dźwięk: " + when {
+                            !soundEnabled -> "wyłączony"
+                            speakText -> "odczyt treści na głos"
+                            selectedAudioName != null -> selectedAudioName!!
+                            else -> "domyślny alarm telefonu"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
 
             Button(
                 onClick = { saveCurrentReminder() },

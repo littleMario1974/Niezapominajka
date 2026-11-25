@@ -2,10 +2,25 @@ package com.mario.niezapominajka
 
 import java.util.Calendar
 import java.util.TimeZone
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
 
 class ReminderDateCalculatorTest {
+
+    private lateinit var originalTimeZone: TimeZone
+
+    @Before
+    fun useUtcForDateCalculationTests() {
+        originalTimeZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+    }
+
+    @After
+    fun restoreDefaultTimeZone() {
+        TimeZone.setDefault(originalTimeZone)
+    }
 
     private fun date(year: Int, month: Int, day: Int): Calendar =
         Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {

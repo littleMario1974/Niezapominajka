@@ -1713,6 +1713,65 @@ suspend fun saveReminders(
     }
 }
 
+/**
+ * Aktualizuje datę tylko wtedy, gdy przypomnienie nadal ma tę samą konfigurację,
+ * dla której uruchomił się alarm. Operacja jest atomowa w DataStore.
+ *
+ * Chroni przed sytuacją, w której stary alarm zdążyłby nadpisać datę lub
+ * ponownie zaplanować się po edycji albo usunięciu przypomnienia.
+ */
+internal suspend fun updateReminderDateIfUnchanged(
+    context: Context,
+    reminderId: Long,
+    expectedDate: Long,
+    expectedText: String,
+    expectedHour: Int,
+    expectedMinute: Int,
+    expectedSoundEnabled: Boolean,
+    expectedSpeakText: Boolean,
+    expectedVoiceFilePath: String?,
+    expectedAudioUri: String?,
+    expectedRepeatType: String,
+    expectedMonthlyDay: Int,
+    nextDate: Long
+): Boolean {
+    var updated = false
+
+    context.dataStore.edit { preferences ->
+        val json = preferences[REMINDERS_KEY] ?: return@edit
+        val array = JSONArray(json)
+
+        for (index in 0 until array.length()) {
+            val item = array.getJSONObject(index)
+            if (item.optLong("id", -1L) != reminderId) continue
+
+            fun optionalString(key: String): String? =
+                item.optString(key).takeUnless { it.isEmpty() || it == "null" }
+
+            val unchanged =
+                item.optLong("date", -1L) == expectedDate &&
+                item.optString("text") == expectedText &&
+                item.optInt("hour", -1) == expectedHour &&
+                item.optInt("minute", -1) == expectedMinute &&
+                item.optBoolean("soundEnabled", true) == expectedSoundEnabled &&
+                item.optBoolean("speakText", false) == expectedSpeakText &&
+                optionalString("voiceFilePath") == expectedVoiceFilePath &&
+                optionalString("audioUri") == expectedAudioUri &&
+                item.optString("repeatType", "NONE") == expectedRepeatType &&
+                item.optInt("monthlyDay", 0) == expectedMonthlyDay
+
+            if (!unchanged) break
+
+            item.put("date", nextDate)
+            preferences[REMINDERS_KEY] = array.toString()
+            updated = true
+            break
+        }
+    }
+
+    return updated
+}
+
 suspend fun loadReminders(
     context: Context
 ): List<Reminder> {

@@ -60,6 +60,7 @@ class AlarmActivity : ComponentActivity() {
             intent.getBooleanExtra("speak_text", false)
         val repeatType = intent.getStringExtra("repeat_type") ?: "NONE"
         val shouldVibrate = intent.getBooleanExtra("should_vibrate", false)
+        val vibrationEnabled = intent.getBooleanExtra("vibration_enabled", shouldVibrate)
 
         val voiceFilePath =
             intent.getStringExtra("voice_file_path")
@@ -141,6 +142,7 @@ class AlarmActivity : ComponentActivity() {
                                 putExtra("reminder_text", reminderText)
                                 putExtra("sound_enabled", soundEnabled)
                                 putExtra("speak_text", speakText)
+                                putExtra("vibration_enabled", vibrationEnabled)
                                 putExtra("voice_file_path", voiceFilePath)
                                 putExtra("audio_uri", audioUri)
                                 putExtra("reminder_id", reminderId)

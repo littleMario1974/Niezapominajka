@@ -90,21 +90,9 @@ class PersistentBannerService : Service() {
             setPadding(0, 0, dp(8), 0)
             maxLines = 3
         }
-        container.addView(
-            message,
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-
-        val close = Button(this).apply {
-            this.text = "Zamknij"
-            isAllCaps = false
-            setOnClickListener { dismissBanner() }
-        }
-        container.addView(close)
-
         var downX = 0f
         var downY = 0f
-        container.setOnTouchListener { _, event ->
+        message.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = event.rawX
@@ -120,6 +108,19 @@ class PersistentBannerService : Service() {
                 else -> true
             }
         }
+        container.addView(
+            message,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+
+        val close = Button(this).apply {
+            this.text = "Zamknij"
+            isAllCaps = false
+            setOnClickListener { dismissBanner() }
+        }
+        container.addView(close)
+
+
 
         val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY

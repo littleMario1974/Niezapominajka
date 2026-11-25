@@ -27,8 +27,10 @@ class AlarmService : Service() {
     private var playingReminderId: Long? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            val reminderId = intent.getLongExtra(EXTRA_REMINDER_ID, -1L)
+        val commandIntent = intent ?: return START_NOT_STICKY
+
+        if (commandIntent.action == ACTION_STOP) {
+            val reminderId = commandIntent.getLongExtra(EXTRA_REMINDER_ID, -1L)
             if (reminderId != -1L) {
                 activeAlarms.remove(reminderId)
                 if (playingReminderId == reminderId) {
@@ -54,9 +56,9 @@ class AlarmService : Service() {
 
         val alarm = ActiveAlarm(
             id = reminderId,
-            text = intent.getStringExtra("reminder_text") ?: "Masz przypomnienie",
-            audioUri = intent.getStringExtra("audio_uri"),
-            voiceFilePath = intent.getStringExtra("voice_file_path")
+            text = commandIntent.getStringExtra("reminder_text") ?: "Masz przypomnienie",
+            audioUri = commandIntent.getStringExtra("audio_uri"),
+            voiceFilePath = commandIntent.getStringExtra("voice_file_path")
         )
         activeAlarms[reminderId] = alarm
         if (playingReminderId == reminderId) stopPlayer()
@@ -69,9 +71,11 @@ class AlarmService : Service() {
 
     private fun playNextActiveAlarm() {
         if (playingReminderId != null) return
-        val nextAlarm = activeAlarms.values.firstOrNull() ?: return
-        if (playAlarm(nextAlarm.audioUri, nextAlarm.voiceFilePath)) {
-            playingReminderId = nextAlarm.id
+        for (alarm in activeAlarms.values) {
+            if (playAlarm(alarm.audioUri, alarm.voiceFilePath)) {
+                playingReminderId = alarm.id
+                return
+            }
         }
     }
 

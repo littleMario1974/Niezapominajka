@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
@@ -76,19 +78,60 @@ class PersistentBannerService : Service() {
         bannerView?.let { try { wm.removeView(it) } catch (_: Exception) {} }
 
         val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(14))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(255, 247, 243))
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(2), Color.rgb(211, 91, 116))
+            }
+            elevation = dp(14).toFloat()
+        }
+
+        // Wyraźny nagłówek w kolorystyce aplikacji.
+        val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(12), dp(8), dp(12))
-            setBackgroundColor(Color.rgb(248, 226, 222))
-            elevation = dp(10).toFloat()
         }
+        val bell = TextView(this).apply {
+            text = "🔔"
+            textSize = 25f
+            setPadding(0, 0, dp(10), 0)
+        }
+        header.addView(bell)
+
+        val heading = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        val brand = TextView(this).apply {
+            text = "NIEZAPOMINAJKA"
+            textSize = 11f
+            letterSpacing = 0.12f
+            setTextColor(Color.rgb(151, 76, 91))
+            setTypeface(typeface, Typeface.BOLD)
+        }
+        val title = TextView(this).apply {
+            text = "PRZYPOMNIENIE"
+            textSize = 19f
+            setTextColor(Color.rgb(104, 35, 54))
+            setTypeface(typeface, Typeface.BOLD)
+        }
+        heading.addView(brand)
+        heading.addView(title)
+        header.addView(
+            heading,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        container.addView(header)
 
         val message = TextView(this).apply {
             this.text = text
-            textSize = 17f
-            setTextColor(Color.rgb(65, 35, 40))
-            setPadding(0, 0, dp(8), 0)
-            maxLines = 3
+            textSize = 18f
+            setTextColor(Color.rgb(55, 38, 42))
+            setPadding(0, dp(12), 0, dp(4))
+            maxLines = 4
+            setLineSpacing(dp(2).toFloat(), 1f)
         }
         var downX = 0f
         var downY = 0f
@@ -110,17 +153,33 @@ class PersistentBannerService : Service() {
         }
         container.addView(
             message,
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
         )
 
         val close = Button(this).apply {
             this.text = "Zamknij"
             isAllCaps = false
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(178, 48, 78))
+                cornerRadius = dp(12).toFloat()
+            }
+            setPadding(dp(22), dp(4), dp(22), dp(4))
+            minHeight = dp(44)
             setOnClickListener { dismissBanner() }
         }
-        container.addView(close)
-
-
+        val closeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            setPadding(0, dp(8), 0, 0)
+            addView(close)
+        }
+        container.addView(closeRow)
 
         val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -128,8 +187,9 @@ class PersistentBannerService : Service() {
             @Suppress("DEPRECATION")
             WindowManager.LayoutParams.TYPE_PHONE
         }
+        val screenWidth = resources.displayMetrics.widthPixels
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            screenWidth - dp(24),
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -137,7 +197,8 @@ class PersistentBannerService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP
-            y = dp(8)
+            x = dp(12)
+            y = dp(10)
         }
 
         try {

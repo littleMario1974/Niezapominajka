@@ -193,6 +193,7 @@ class AlarmActivity : ComponentActivity() {
             }
         }
     }
+    }
 
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
         if (

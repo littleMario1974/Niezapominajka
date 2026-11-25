@@ -1760,7 +1760,16 @@ internal suspend fun updateReminderDateIfUnchanged(
                 optionalString("voiceFilePath") == expectedVoiceFilePath &&
                 optionalString("audioUri") == expectedAudioUri &&
                 item.optString("repeatType", "NONE") == expectedRepeatType &&
-                item.optInt("monthlyDay", 0) == expectedMonthlyDay
+                (
+                    item.optInt("monthlyDay", 0) == expectedMonthlyDay ||
+                    (
+                        expectedRepeatType == "MONTHLY" &&
+                        item.optInt("monthlyDay", 0) !in 1..31 &&
+                        expectedMonthlyDay == java.util.Calendar.getInstance().apply {
+                            timeInMillis = expectedDate
+                        }.get(java.util.Calendar.DAY_OF_MONTH)
+                    )
+                )
 
             if (!unchanged) break
 

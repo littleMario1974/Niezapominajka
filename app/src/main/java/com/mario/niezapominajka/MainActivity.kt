@@ -293,7 +293,16 @@ private var lastExactAlarmPermission: Boolean? = null
 
         setContent {
             NiezapominajkaTheme {
-                NiezapominajkaApp(refreshVersion = refreshVersion)
+                NiezapominajkaApp(
+                    refreshVersion = refreshVersion,
+                    onEnableOverlay = {
+                        val overlayIntent = android.content.Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:$packageName")
+                        )
+                        startActivity(overlayIntent)
+                    }
+                )
             }
         }
     }
@@ -339,7 +348,8 @@ private var lastExactAlarmPermission: Boolean? = null
 
 @Composable
 fun NiezapominajkaApp(
-    refreshVersion: Int = 0
+    refreshVersion: Int = 0,
+    onEnableOverlay: () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -557,6 +567,24 @@ var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M &&
+                !android.provider.Settings.canDrawOverlays(context)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Trwały baner przypomnienia", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Aby baner pozostał na ekranie aż do ręcznego zamknięcia, zezwól Niezapominajce na wyświetlanie nad innymi aplikacjami.")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = onEnableOverlay) { Text("Włącz trwały baner") }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(24.dp))

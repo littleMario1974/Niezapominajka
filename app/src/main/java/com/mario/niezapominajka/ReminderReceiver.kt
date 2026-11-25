@@ -274,6 +274,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 AlarmService::class.java
             ).apply {
                 putExtra("reminder_text", reminderText)
+                putExtra("reminder_id", reminderId)
                 putExtra("sound_enabled", soundEnabled)
                 putExtra("speak_text", speakText)
                 putExtra("voice_file_path", voiceFilePath)
@@ -303,7 +304,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
         val alarmPendingIntent = PendingIntent.getActivity(
             context,
-            System.currentTimeMillis().toInt(),
+            reminderId.hashCode(),
             alarmIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or
                     PendingIntent.FLAG_IMMUTABLE

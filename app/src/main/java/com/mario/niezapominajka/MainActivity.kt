@@ -357,6 +357,18 @@ fun NiezapominajkaApp(
     var showAddScreen by remember { mutableStateOf(false) }
     var reminderToEdit by remember { mutableStateOf<Reminder?>(null) }
     var reminders by remember { mutableStateOf(listOf<Reminder>()) }
+    var showOverlayPermissionDialog by remember { mutableStateOf(false) }
+
+    // Przy pierwszym uruchomieniu wyjaśniamy, po co potrzebne jest uprawnienie.
+    // Android wymaga, aby użytkownik sam zatwierdził je w ustawieniach systemowych.
+    LaunchedEffect(Unit) {
+        val setupPreferences = context.getSharedPreferences("app_setup", Context.MODE_PRIVATE)
+        if (!android.provider.Settings.canDrawOverlays(context) &&
+            !setupPreferences.getBoolean("overlay_permission_prompted", false)
+        ) {
+            showOverlayPermissionDialog = true
+        }
+    }
 
     LaunchedEffect(refreshVersion) {
         reminders = loadReminders(context)
@@ -463,6 +475,40 @@ fun NiezapominajkaApp(
                     cancelReminder(context, reminder)
                     reminders = updatedReminders
                 }
+            },
+            onEnableOverlay = onEnableOverlay
+        )
+    }
+
+    if (showOverlayPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                context.getSharedPreferences("app_setup", Context.MODE_PRIVATE)
+                    .edit().putBoolean("overlay_permission_prompted", true).apply()
+                showOverlayPermissionDialog = false
+            },
+            title = { Text("Włącz trwałe banery?") },
+            text = {
+                Text("Dzięki temu przypomnienie wyświetlane podczas korzystania z telefonu pozostanie na ekranie aż do jego zamknięcia. Android wymaga jednorazowego zezwolenia w ustawieniach „Wyświetlanie nad innymi aplikacjami”.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        context.getSharedPreferences("app_setup", Context.MODE_PRIVATE)
+                            .edit().putBoolean("overlay_permission_prompted", true).apply()
+                        showOverlayPermissionDialog = false
+                        onEnableOverlay()
+                    }
+                ) { Text("Przejdź do ustawień") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        context.getSharedPreferences("app_setup", Context.MODE_PRIVATE)
+                            .edit().putBoolean("overlay_permission_prompted", true).apply()
+                        showOverlayPermissionDialog = false
+                    }
+                ) { Text("Nie teraz") }
             }
         )
     }
@@ -476,7 +522,8 @@ fun HomeScreen(
     exactAlarmsAllowed: Boolean,
     onAddReminder: () -> Unit,
     onEditReminder: (Reminder) -> Unit,
-    onDeleteReminder: (Reminder) -> Unit
+    onDeleteReminder: (Reminder) -> Unit,
+    onEnableOverlay: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 

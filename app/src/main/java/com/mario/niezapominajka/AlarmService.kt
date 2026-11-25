@@ -7,24 +7,36 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
+import java.util.Locale
 
-/** Koordynuje dźwięk wszystkich aktualnie aktywnych przypomnień. */
+/** Koordynuje dźwięk i odczytywanie wszystkich aktywnych przypomnień. */
 class AlarmService : Service() {
 
     private data class ActiveAlarm(
         val id: Long,
         val text: String,
         val audioUri: String?,
-        val voiceFilePath: String?
+        val voiceFilePath: String?,
+        val soundEnabled: Boolean,
+        val speakText: Boolean
     )
 
     private val activeAlarms = linkedMapOf<Long, ActiveAlarm>()
+    private val handler = Handler(Looper.getMainLooper())
     private var mediaPlayer: MediaPlayer? = null
-    private var playingReminderId: Long? = null
+    private var textToSpeech: TextToSpeech? = null
+    private var ttsReady = false
+    private var ttsInitializing = false
+    private var currentReminderId: Long? = null
+    private var speechRepeatRunnable: Runnable? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val commandIntent = intent ?: return START_NOT_STICKY
@@ -33,13 +45,13 @@ class AlarmService : Service() {
             val reminderId = commandIntent.getLongExtra(EXTRA_REMINDER_ID, -1L)
             if (reminderId != -1L) {
                 activeAlarms.remove(reminderId)
-                if (playingReminderId == reminderId) {
-                    stopPlayer()
+                if (currentReminderId == reminderId) {
+                    stopCurrentPlayback()
                     playNextActiveAlarm()
                 }
             }
             if (activeAlarms.isEmpty()) {
-                stopPlayer()
+                stopCurrentPlayback()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf(startId)
             } else {
@@ -58,25 +70,105 @@ class AlarmService : Service() {
             id = reminderId,
             text = commandIntent.getStringExtra("reminder_text") ?: "Masz przypomnienie",
             audioUri = commandIntent.getStringExtra("audio_uri"),
-            voiceFilePath = commandIntent.getStringExtra("voice_file_path")
+            voiceFilePath = commandIntent.getStringExtra("voice_file_path"),
+            soundEnabled = commandIntent.getBooleanExtra("sound_enabled", true),
+            speakText = commandIntent.getBooleanExtra("speak_text", false)
         )
         activeAlarms[reminderId] = alarm
-        if (playingReminderId == reminderId) stopPlayer()
 
         createServiceChannel()
         startForeground(NOTIFICATION_ID, buildForegroundNotification(alarm.text))
-        if (playingReminderId == null) playNextActiveAlarm()
+        if (currentReminderId == null) playNextActiveAlarm()
         return START_NOT_STICKY
     }
 
     private fun playNextActiveAlarm() {
-        if (playingReminderId != null) return
-        for (alarm in activeAlarms.values) {
-            if (playAlarm(alarm.audioUri, alarm.voiceFilePath)) {
-                playingReminderId = alarm.id
-                return
+        if (currentReminderId != null) return
+
+        val nextAlarm = activeAlarms.values.firstOrNull() ?: return
+        currentReminderId = nextAlarm.id
+
+        if (nextAlarm.speakText) {
+            ensureTextToSpeech()
+            if (ttsReady) speakCurrentAlarm()
+        } else if (nextAlarm.soundEnabled) {
+            if (!playAlarm(nextAlarm.audioUri, nextAlarm.voiceFilePath)) {
+                finishCurrentAlarm()
+            }
+        } else {
+            finishCurrentAlarm()
+        }
+    }
+
+    private fun ensureTextToSpeech() {
+        if (ttsReady || ttsInitializing) return
+        ttsInitializing = true
+        textToSpeech = TextToSpeech(applicationContext) { status ->
+            ttsInitializing = false
+            if (status == TextToSpeech.SUCCESS) {
+                val languageResult = textToSpeech?.setLanguage(
+                    Locale.forLanguageTag("pl-PL")
+                )
+                ttsReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
+                    languageResult != TextToSpeech.LANG_NOT_SUPPORTED
+
+                textToSpeech?.setOnUtteranceProgressListener(
+                    object : UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) = Unit
+
+                        override fun onDone(utteranceId: String?) {
+                            handler.post {
+                                val activeId = currentReminderId ?: return@post
+                                if (activeAlarms[activeId]?.speakText == true) {
+                                    scheduleSpeechRepeat(activeId)
+                                }
+                            }
+                        }
+
+                        override fun onError(utteranceId: String?) {
+                            handler.post { finishCurrentAlarm() }
+                        }
+                    }
+                )
+
+                if (ttsReady) {
+                    speakCurrentAlarm()
+                } else {
+                    Log.w(TAG, "Brak polskiego głosu TTS.")
+                    finishCurrentAlarm()
+                }
+            } else {
+                Log.e(TAG, "Nie udało się zainicjalizować TTS.")
+                finishCurrentAlarm()
             }
         }
+    }
+
+    private fun speakCurrentAlarm() {
+        val alarm = currentReminderId?.let(activeAlarms::get) ?: return
+        if (!ttsReady || !alarm.speakText) return
+        val result = textToSpeech?.speak(
+            alarm.text,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "reminder_${alarm.id}"
+        )
+        if (result == TextToSpeech.ERROR) {
+            Log.e(TAG, "Nie udało się odczytać przypomnienia ID=${alarm.id}.")
+            finishCurrentAlarm()
+        }
+    }
+
+    private fun scheduleSpeechRepeat(reminderId: Long) {
+        speechRepeatRunnable?.let(handler::removeCallbacks)
+        speechRepeatRunnable = Runnable {
+            if (currentReminderId == reminderId &&
+                activeAlarms[reminderId]?.speakText == true
+            ) {
+                speakCurrentAlarm()
+            }
+        }
+        speechRepeatRunnable?.let { handler.postDelayed(it, SPEECH_REPEAT_DELAY_MS) }
     }
 
     private fun playAlarm(audioUri: String?, voiceFilePath: String?): Boolean {
@@ -111,7 +203,18 @@ class AlarmService : Service() {
         }
     }
 
-    private fun stopPlayer() {
+    private fun finishCurrentAlarm() {
+        stopCurrentPlayback()
+        playNextActiveAlarm()
+    }
+
+    private fun stopCurrentPlayback() {
+        speechRepeatRunnable?.let(handler::removeCallbacks)
+        speechRepeatRunnable = null
+        try {
+            textToSpeech?.stop()
+        } catch (_: Exception) {
+        }
         mediaPlayer?.let { player ->
             try {
                 if (player.isPlaying) player.stop()
@@ -121,7 +224,7 @@ class AlarmService : Service() {
             }
         }
         mediaPlayer = null
-        playingReminderId = null
+        currentReminderId = null
     }
 
     private fun updateForegroundNotification() {
@@ -149,7 +252,10 @@ class AlarmService : Service() {
     }
 
     override fun onDestroy() {
-        stopPlayer()
+        stopCurrentPlayback()
+        textToSpeech?.shutdown()
+        textToSpeech = null
+        ttsReady = false
         activeAlarms.clear()
         super.onDestroy()
     }
@@ -162,5 +268,6 @@ class AlarmService : Service() {
         private const val TAG = "Niezapominajka"
         private const val CHANNEL_ID = "active_alarm"
         private const val NOTIFICATION_ID = 70001
+        private const val SPEECH_REPEAT_DELAY_MS = 5_000L
     }
 }

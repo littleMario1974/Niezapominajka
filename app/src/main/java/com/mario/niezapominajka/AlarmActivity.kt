@@ -106,7 +106,8 @@ class AlarmActivity : ComponentActivity() {
                             text = reminderText,
                             color = Color.White,
                             fontSize = 40.sp,
-                        modifier = Modifier
+                            lineHeight = 52.sp,
+                            modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 24.dp),
                         textAlign = TextAlign.Center

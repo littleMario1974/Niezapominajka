@@ -293,16 +293,7 @@ private var lastExactAlarmPermission: Boolean? = null
 
         setContent {
             NiezapominajkaTheme {
-                NiezapominajkaApp(
-                    refreshVersion = refreshVersion,
-                    onEnableOverlay = {
-                        val overlayIntent = android.content.Intent(
-                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            android.net.Uri.parse("package:$packageName")
-                        )
-                        startActivity(overlayIntent)
-                    }
-                )
+                NiezapominajkaApp(refreshVersion = refreshVersion)
             }
         }
     }
@@ -348,8 +339,7 @@ private var lastExactAlarmPermission: Boolean? = null
 
 @Composable
 fun NiezapominajkaApp(
-    refreshVersion: Int = 0,
-    onEnableOverlay: () -> Unit = {}
+    refreshVersion: Int = 0
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -357,18 +347,6 @@ fun NiezapominajkaApp(
     var showAddScreen by remember { mutableStateOf(false) }
     var reminderToEdit by remember { mutableStateOf<Reminder?>(null) }
     var reminders by remember { mutableStateOf(listOf<Reminder>()) }
-    var showOverlayPermissionDialog by remember { mutableStateOf(false) }
-
-    // Przy pierwszym uruchomieniu wyjaśniamy, po co potrzebne jest uprawnienie.
-    // Android wymaga, aby użytkownik sam zatwierdził je w ustawieniach systemowych.
-    LaunchedEffect(Unit) {
-        val setupPreferences = context.getSharedPreferences("app_setup", Context.MODE_PRIVATE)
-        if (!android.provider.Settings.canDrawOverlays(context) &&
-            !setupPreferences.getBoolean("overlay_permission_prompted", false)
-        ) {
-            showOverlayPermissionDialog = true
-        }
-    }
 
     LaunchedEffect(refreshVersion) {
         reminders = loadReminders(context)
@@ -476,42 +454,9 @@ fun NiezapominajkaApp(
                     reminders = updatedReminders
                 }
             },
-            onEnableOverlay = onEnableOverlay
         )
     }
 
-    if (showOverlayPermissionDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                context.getSharedPreferences("app_setup", Context.MODE_PRIVATE)
-                    .edit().putBoolean("overlay_permission_prompted", true).apply()
-                showOverlayPermissionDialog = false
-            },
-            title = { Text("Włącz trwałe banery?") },
-            text = {
-                Text("Dzięki temu przypomnienie wyświetlane podczas korzystania z telefonu pozostanie na ekranie aż do jego zamknięcia. Android wymaga jednorazowego zezwolenia w ustawieniach „Wyświetlanie nad innymi aplikacjami”.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        context.getSharedPreferences("app_setup", Context.MODE_PRIVATE)
-                            .edit().putBoolean("overlay_permission_prompted", true).apply()
-                        showOverlayPermissionDialog = false
-                        onEnableOverlay()
-                    }
-                ) { Text("Przejdź do ustawień") }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        context.getSharedPreferences("app_setup", Context.MODE_PRIVATE)
-                            .edit().putBoolean("overlay_permission_prompted", true).apply()
-                        showOverlayPermissionDialog = false
-                    }
-                ) { Text("Nie teraz") }
-            }
-        )
-    }
 }
 
 
@@ -522,8 +467,7 @@ fun HomeScreen(
     exactAlarmsAllowed: Boolean,
     onAddReminder: () -> Unit,
     onEditReminder: (Reminder) -> Unit,
-    onDeleteReminder: (Reminder) -> Unit,
-    onEnableOverlay: () -> Unit
+    onDeleteReminder: (Reminder) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -614,24 +558,6 @@ var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
-
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M &&
-                !android.provider.Settings.canDrawOverlays(context)
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Trwały baner przypomnienia", style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Aby baner pozostał na ekranie aż do ręcznego zamknięcia, zezwól Niezapominajce na wyświetlanie nad innymi aplikacjami.")
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(onClick = onEnableOverlay) { Text("Włącz trwały baner") }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(24.dp))

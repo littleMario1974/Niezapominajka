@@ -275,9 +275,10 @@ class ReminderReceiver : BroadcastReceiver() {
         val isDeviceLocked = keyguardManager.isKeyguardLocked
         val shouldVibrate = isDeviceLocked && vibrationEnabled
 
-        // Dźwięk i TTS są koordynowane w jednej usłudze, również gdy
-        // kilka przypomnień uruchomi się w tej samej chwili.
-        if (soundEnabled || speakText) {
+        // Dźwięk i TTS uruchamiamy wyłącznie przy zablokowanym telefonie.
+        // Gdy użytkownik korzysta z telefonu, przypomnienie ma być tylko
+        // cichym banerem — bez działającej w tle usługi odtwarzającej alarm.
+        if (isDeviceLocked && (soundEnabled || speakText)) {
             val serviceIntent = Intent(
                 context,
                 AlarmService::class.java

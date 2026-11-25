@@ -94,8 +94,12 @@ class ReminderReceiver : BroadcastReceiver() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                if (nextDate != null) {
-                    val updated = try {
+                // Drzemka jest niezależnym, pięciominutowym alarmem i nie
+                // posiada własnej wersji daty w DataStore.
+                val reminderStillCurrent = if (isSnooze) {
+                    true
+                } else {
+                    try {
                         updateReminderDateIfUnchanged(
                             context = context,
                             reminderId = reminderId,
@@ -112,11 +116,13 @@ class ReminderReceiver : BroadcastReceiver() {
                             nextDate = nextDate
                         )
                     } catch (e: Exception) {
-                        Log.e(TAG, "Błąd atomowej aktualizacji daty przypomnienia.", e)
+                        Log.e(TAG, "Nie udało się zweryfikować aktualności alarmu.", e)
                         false
                     }
+                }
 
-                    if (updated) {
+                if (reminderStillCurrent) {
+                    if (nextDate != null) {
                         try {
                             scheduleNextReminder(
                                 context = context,
@@ -135,25 +141,25 @@ class ReminderReceiver : BroadcastReceiver() {
                         } catch (e: Exception) {
                             Log.e(TAG, "Błąd planowania kolejnego alarmu.", e)
                         }
-                    } else {
-                        Log.i(
-                            TAG,
-                            "Pominięto ponowne planowanie nieaktualnego alarmu ID=$reminderId. " +
-                                "Przypomnienie mogło zostać zmienione lub usunięte."
-                        )
                     }
-                }
 
-                showAlarm(
-                    context = context,
-                    reminderText = reminderText,
-                    soundEnabled = soundEnabled,
-                    speakText = speakText,
-                    voiceFilePath = voiceFilePath,
-                    audioUri = audioUri,
-                    reminderId = reminderId,
-                    repeatType = repeatType
-                )
+                    showAlarm(
+                        context = context,
+                        reminderText = reminderText,
+                        soundEnabled = soundEnabled,
+                        speakText = speakText,
+                        voiceFilePath = voiceFilePath,
+                        audioUri = audioUri,
+                        reminderId = reminderId,
+                        repeatType = repeatType
+                    )
+                } else {
+                    Log.i(
+                        TAG,
+                        "Zignorowano nieaktualny alarm ID=$reminderId; " +
+                            "przypomnienie zmieniono lub usunięto."
+                    )
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Błąd obsługi przypomnienia.", e)
             } finally {

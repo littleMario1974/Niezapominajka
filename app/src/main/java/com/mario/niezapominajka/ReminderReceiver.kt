@@ -50,6 +50,11 @@ class ReminderReceiver : BroadcastReceiver() {
         val reminderDate =
             intent.getLongExtra("reminder_date", 0L)
 
+        // DataStore może mieć starszą datę bazową, gdy alarm zaplanowano
+        // po nadrobieniu zaległości; sprawdzamy wersję faktycznie zapisaną.
+        val reminderStoredDate =
+            intent.getLongExtra("reminder_stored_date", reminderDate)
+
         val reminderHour =
             intent.getIntExtra("reminder_hour", 0)
 
@@ -94,7 +99,7 @@ class ReminderReceiver : BroadcastReceiver() {
                         updateReminderDateIfUnchanged(
                             context = context,
                             reminderId = reminderId,
-                            expectedDate = reminderDate,
+                            expectedDate = reminderStoredDate,
                             expectedText = reminderText,
                             expectedHour = reminderHour,
                             expectedMinute = reminderMinute,
@@ -188,6 +193,7 @@ class ReminderReceiver : BroadcastReceiver() {
             putExtra("reminder_id", reminderId)
             putExtra("repeat_type", repeatType)
             putExtra("reminder_date", nextDate)
+            putExtra("reminder_stored_date", nextDate)
             putExtra("reminder_hour", hour)
             putExtra("reminder_minute", minute)
             putExtra("monthly_day", monthlyDay)

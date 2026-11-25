@@ -20,7 +20,8 @@ class BootReceiver : BroadcastReceiver() {
             action != Intent.ACTION_BOOT_COMPLETED &&
             action != Intent.ACTION_TIME_CHANGED &&
             action != Intent.ACTION_TIMEZONE_CHANGED &&
-            action != Intent.ACTION_MY_PACKAGE_REPLACED
+            action != Intent.ACTION_MY_PACKAGE_REPLACED &&
+            action != ACTION_EXACT_ALARM_PERMISSION_STATE_CHANGED
         ) return
 
         Log.i(TAG, "Odtwarzanie harmonogramu po zdarzeniu: $action")
@@ -101,5 +102,7 @@ class BootReceiver : BroadcastReceiver() {
 
     private companion object {
         const val TAG = "Niezapominajka"
+        const val ACTION_EXACT_ALARM_PERMISSION_STATE_CHANGED =
+            "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
     }
 }

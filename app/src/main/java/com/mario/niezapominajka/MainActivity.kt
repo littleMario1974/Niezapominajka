@@ -54,7 +54,8 @@ data class Reminder(
     val audioUri: String? = null,
     val repeatType: String = "NONE",
     val monthlyDay: Int = 0,
-    val speakText: Boolean = false
+    val speakText: Boolean = false,
+    val vibrationEnabled: Boolean = true
 )
 
 
@@ -176,6 +177,7 @@ val intent = android.content.Intent(
     putExtra("reminder_text", reminder.text)
     putExtra("sound_enabled", reminder.soundEnabled)
     putExtra("speak_text", reminder.speakText)
+    putExtra("vibration_enabled", reminder.vibrationEnabled)
     putExtra("voice_file_path", reminder.voiceFilePath)
     putExtra("audio_uri", reminder.audioUri)
     putExtra("reminder_id", reminder.id)
@@ -951,6 +953,8 @@ fun AddReminderScreen(
                 selectedAudioUri = uri
                 selectedAudioName = uri.lastPathSegment
                 speakText = false
+                soundEnabled = true
+                vibrationEnabled = false
             }
         }
 
@@ -960,6 +964,14 @@ fun AddReminderScreen(
 
     var soundEnabled by remember(reminderToEdit?.id) {
         mutableStateOf(reminderToEdit?.soundEnabled ?: true)
+    }
+    var vibrationEnabled by remember(reminderToEdit?.id) {
+        mutableStateOf(
+            reminderToEdit?.vibrationEnabled
+                ?: (reminderToEdit?.speakText != true &&
+                    reminderToEdit?.audioUri.isNullOrBlank() &&
+                    reminderToEdit?.voiceFilePath.isNullOrBlank())
+        )
     }
     var isSpeakingPreview by remember {
         mutableStateOf(false)
@@ -1038,6 +1050,7 @@ fun AddReminderScreen(
             selectedHour != 12 ||
             selectedMinute != 0 ||
             !soundEnabled ||
+            !vibrationEnabled ||
             speakText ||
             selectedAudioUri != null ||
             selectedVoiceFilePath != null ||
@@ -1048,6 +1061,7 @@ fun AddReminderScreen(
             selectedHour != reminderToEdit.hour ||
             selectedMinute != reminderToEdit.minute ||
             soundEnabled != reminderToEdit.soundEnabled ||
+            vibrationEnabled != reminderToEdit.vibrationEnabled ||
             speakText != reminderToEdit.speakText ||
             selectedAudioUri?.toString() != reminderToEdit.audioUri ||
             selectedVoiceFilePath != reminderToEdit.voiceFilePath ||
@@ -1099,6 +1113,7 @@ fun AddReminderScreen(
                     hour = selectedHour,
                     minute = selectedMinute,
                     soundEnabled = soundEnabled,
+                    vibrationEnabled = vibrationEnabled,
                     voiceFilePath = selectedVoiceFilePath,
                     audioUri = selectedAudioUri?.toString(),
                     repeatType = repeatType,
@@ -1279,6 +1294,7 @@ fun AddReminderScreen(
 
         if (checked) {
             soundEnabled = true
+            vibrationEnabled = false
         }
     }
 )
@@ -1295,6 +1311,7 @@ fun AddReminderScreen(
                 Button(
                     onClick = {
                         soundEnabled = true
+                        vibrationEnabled = true
                         speakText = false
                         isSpeakingPreview = false
                         textToSpeech.stop()
@@ -1327,7 +1344,7 @@ fun AddReminderScreen(
                         .heightIn(min = 52.dp),
                     shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (soundEnabled) {
+                        containerColor = if (soundEnabled && vibrationEnabled && !speakText && selectedAudioUri == null && selectedVoiceFilePath == null) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
@@ -1339,7 +1356,28 @@ fun AddReminderScreen(
 
                 Button(
                     onClick = {
+                        soundEnabled = true
+                        vibrationEnabled = false
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp),
+                    shape = MaterialTheme.shapes.large,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (soundEnabled && !vibrationEnabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    )
+                ) {
+                    Text("🔈 Tylko dźwięk")
+                }
+
+                Button(
+                    onClick = {
                         soundEnabled = false
+                        vibrationEnabled = true
                         speakText = false
                         isSpeakingPreview = false
                         textToSpeech.stop()
@@ -1366,7 +1404,7 @@ fun AddReminderScreen(
                         .heightIn(min = 52.dp),
                     shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (!soundEnabled) {
+                        containerColor = if (!soundEnabled && vibrationEnabled) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
@@ -1599,7 +1637,11 @@ fun AddReminderScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        "Alarm: " + if (soundEnabled) "Dźwięk + wibracja" else "Tylko wibracja",
+                        "Alarm: " + when {
+                            !soundEnabled -> "Tylko wibracja"
+                            !vibrationEnabled -> "Tylko dźwięk"
+                            else -> "Dźwięk + wibracja"
+                        },
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
@@ -1779,6 +1821,7 @@ suspend fun saveReminders(
         jsonObject.put("hour", reminder.hour)
         jsonObject.put("minute", reminder.minute)
         jsonObject.put("soundEnabled", reminder.soundEnabled)
+        jsonObject.put("vibrationEnabled", reminder.vibrationEnabled)
         jsonObject.put("voiceFilePath", reminder.voiceFilePath)
         jsonObject.put("audioUri", reminder.audioUri)
         jsonObject.put("repeatType", reminder.repeatType)
@@ -1808,6 +1851,7 @@ internal suspend fun updateReminderDateIfUnchanged(
     expectedHour: Int,
     expectedMinute: Int,
     expectedSoundEnabled: Boolean,
+    expectedVibrationEnabled: Boolean,
     expectedSpeakText: Boolean,
     expectedVoiceFilePath: String?,
     expectedAudioUri: String?,
@@ -1834,6 +1878,12 @@ internal suspend fun updateReminderDateIfUnchanged(
                 item.optInt("hour", -1) == expectedHour &&
                 item.optInt("minute", -1) == expectedMinute &&
                 item.optBoolean("soundEnabled", true) == expectedSoundEnabled &&
+                item.optBoolean(
+                    "vibrationEnabled",
+                    !item.optBoolean("speakText", false) &&
+                        optionalString("audioUri").isNullOrBlank() &&
+                        optionalString("voiceFilePath").isNullOrBlank()
+                ) == expectedVibrationEnabled &&
                 item.optBoolean("speakText", false) == expectedSpeakText &&
                 optionalString("voiceFilePath") == expectedVoiceFilePath &&
                 optionalString("audioUri") == expectedAudioUri &&
@@ -1904,6 +1954,12 @@ suspend fun loadReminders(
                 hour = jsonObject.getInt("hour"),
                 minute = jsonObject.getInt("minute"),
                 soundEnabled = jsonObject.optBoolean("soundEnabled", true),
+                vibrationEnabled = jsonObject.optBoolean(
+                    "vibrationEnabled",
+                    !jsonObject.optBoolean("speakText", false) &&
+                        jsonObject.optString("audioUri").let { it.isBlank() || it == "null" } &&
+                        jsonObject.optString("voiceFilePath").let { it.isBlank() || it == "null" }
+                ),
 
                 voiceFilePath = jsonObject.optString("voiceFilePath")
                     .takeUnless { it.isEmpty() || it == "null" },

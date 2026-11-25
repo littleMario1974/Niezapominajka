@@ -95,7 +95,7 @@ class PersistentBannerService : Service() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val bell = TextView(this).apply {
-            text = "🔔"
+            this.text = "🔔"
             textSize = 25f
             setPadding(0, 0, dp(10), 0)
         }
@@ -105,14 +105,14 @@ class PersistentBannerService : Service() {
             orientation = LinearLayout.VERTICAL
         }
         val brand = TextView(this).apply {
-            text = "NIEZAPOMINAJKA"
+            this.text = "NIEZAPOMINAJKA"
             textSize = 11f
             letterSpacing = 0.12f
             setTextColor(Color.rgb(151, 76, 91))
             setTypeface(typeface, Typeface.BOLD)
         }
         val title = TextView(this).apply {
-            text = "PRZYPOMNIENIE"
+            this.text = "PRZYPOMNIENIE"
             textSize = 19f
             setTextColor(Color.rgb(104, 35, 54))
             setTypeface(typeface, Typeface.BOLD)

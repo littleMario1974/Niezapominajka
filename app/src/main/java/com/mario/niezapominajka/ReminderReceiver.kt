@@ -268,7 +268,9 @@ class ReminderReceiver : BroadcastReceiver() {
                     (audioUri.isNullOrBlank() && voiceFilePath.isNullOrBlank())
             )
 
-        if (isDeviceLocked && soundEnabled && !speakText) {
+        // Dźwięk i TTS są koordynowane w jednej usłudze, również gdy
+        // kilka przypomnień uruchomi się w tej samej chwili.
+        if (soundEnabled || speakText) {
             val serviceIntent = Intent(
                 context,
                 AlarmService::class.java

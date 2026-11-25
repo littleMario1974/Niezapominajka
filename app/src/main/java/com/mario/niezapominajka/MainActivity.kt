@@ -363,8 +363,6 @@ fun NiezapominajkaApp(
                 val oldReminder = reminderToEdit
 
                 val updatedReminders = if (oldReminder != null) {
-                    cancelReminder(context, oldReminder)
-
                     reminders.map {
                         if (it.id == oldReminder.id) reminder else it
                     }
@@ -372,16 +370,49 @@ fun NiezapominajkaApp(
                     reminders + reminder
                 }
 
-                reminders = updatedReminders
-
+                // Najpierw trwale zapisujemy dane. Dopiero po udanym zapisie
+                // wolno anulować poprzedni alarm i ustawić nowy.
                 scope.launch {
-                    saveReminders(context, updatedReminders)
+                    try {
+                        saveReminders(context, updatedReminders)
+                    } catch (e: Exception) {
+                        android.util.Log.e(
+                            "Niezapominajka",
+                            "Nie udało się zapisać przypomnienia.",
+                            e
+                        )
+                        android.widget.Toast.makeText(
+                            context,
+                            "Nie udało się zapisać przypomnienia.",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                        return@launch
+                    }
+
+                    if (oldReminder != null) {
+                        cancelReminder(context, oldReminder)
+                    }
+
+                    reminders = updatedReminders
+
+                    try {
+                        scheduleReminder(context, reminder)
+                    } catch (e: Exception) {
+                        android.util.Log.e(
+                            "Niezapominajka",
+                            "Przypomnienie zapisano, ale nie udało się ustawić alarmu.",
+                            e
+                        )
+                        android.widget.Toast.makeText(
+                            context,
+                            "Przypomnienie zapisano, ale wystąpił problem z ustawieniem alarmu.",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+
+                    showAddScreen = false
+                    reminderToEdit = null
                 }
-
-                scheduleReminder(context, reminder)
-
-                showAddScreen = false
-                reminderToEdit = null
             }
         )
     } else {
@@ -397,15 +428,30 @@ fun NiezapominajkaApp(
                 reminderToEdit = reminder
             },
             onDeleteReminder = { reminder ->
-                cancelReminder(context, reminder)
-
                 val updatedReminders =
                     reminders.filter { it.id != reminder.id }
 
-                reminders = updatedReminders
-
+                // Najpierw zapisujemy usunięcie. Jeśli zapis się nie powiedzie,
+                // pozostawiamy dotychczasowy alarm i wpis na liście.
                 scope.launch {
-                    saveReminders(context, updatedReminders)
+                    try {
+                        saveReminders(context, updatedReminders)
+                    } catch (e: Exception) {
+                        android.util.Log.e(
+                            "Niezapominajka",
+                            "Nie udało się usunąć przypomnienia z pamięci.",
+                            e
+                        )
+                        android.widget.Toast.makeText(
+                            context,
+                            "Nie udało się usunąć przypomnienia.",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                        return@launch
+                    }
+
+                    cancelReminder(context, reminder)
+                    reminders = updatedReminders
                 }
             }
         )

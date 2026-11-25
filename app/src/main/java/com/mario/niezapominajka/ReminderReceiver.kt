@@ -275,21 +275,6 @@ class ReminderReceiver : BroadcastReceiver() {
         val isDeviceLocked = keyguardManager.isKeyguardLocked
         val shouldVibrate = isDeviceLocked && vibrationEnabled
 
-        // Przy odblokowanym telefonie wyświetlamy trwały, cichy baner.
-        if (!isDeviceLocked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            android.provider.Settings.canDrawOverlays(context)
-        ) {
-            try {
-                context.startForegroundService(
-                    Intent(context, PersistentBannerService::class.java).apply {
-                        putExtra("reminder_text", reminderText)
-                        putExtra("reminder_id", reminderId)
-                    }
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Nie udało się wyświetlić trwałego banera.", e)
-            }
-        }
 
         // Dźwięk i TTS uruchamiamy wyłącznie przy zablokowanym telefonie.
         if (isDeviceLocked && (soundEnabled || speakText)) {
@@ -366,7 +351,7 @@ class ReminderReceiver : BroadcastReceiver() {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(false)
-            .setOngoing(true)
+            .setOngoing(false)
 
         // Ekran alarmu uruchamiamy tylko przy zablokowanym telefonie.
         // Przy odblokowanym pozostaje zwykły, widoczny i cichy baner.
@@ -376,19 +361,15 @@ class ReminderReceiver : BroadcastReceiver() {
 
         val notification = notificationBuilder.build()
 
-        // Gdy telefon jest odblokowany i mamy zgodę na nakładkę,
-        // trwały baner zastępuje zwykłe powiadomienie heads-up.
-        // Dzięki temu nie miga najpierw drugi, krótkotrwały baner systemowy.
-        val persistentOverlayAvailable =
-            !isDeviceLocked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                android.provider.Settings.canDrawOverlays(context)
-
-        if (!persistentOverlayAvailable &&
-            (Build.VERSION.SDK_INT < 33 ||
+        // Powiadomienie pozostaje w centrum powiadomień do ręcznego
+        // odrzucenia. Android sam ukrywa krótki baner heads-up po chwili.
+        val notificationsAllowed =
+            Build.VERSION.SDK_INT < 33 ||
                 context.checkSelfPermission(
                     Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED)
-        ) {
+                ) == PackageManager.PERMISSION_GRANTED
+
+        if (notificationsAllowed) {
             NotificationManagerCompat.from(context).notify(
                 reminderId.hashCode(),
                 notification

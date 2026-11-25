@@ -35,6 +35,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import android.app.AlarmManager
 import androidx.lifecycle.lifecycleScope
 
@@ -504,7 +506,12 @@ var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             Box(modifier = Modifier.padding(end = 12.dp)) {
-                FloatingActionButton(onClick = onAddReminder) {
+                FloatingActionButton(
+                    onClick = onAddReminder,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Dodaj przypomnienie"
+                    }
+                ) {
                     Text(
                         text = "+",
                         style = MaterialTheme.typography.headlineMedium
@@ -1281,11 +1288,10 @@ fun AddReminderScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
                 Button(
                     onClick = {
                         soundEnabled = true
@@ -1317,8 +1323,8 @@ fun AddReminderScreen(
                         defaultAlarmPlayer = null
                     },
                     modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp),
                     shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (soundEnabled) {
@@ -1330,7 +1336,6 @@ fun AddReminderScreen(
                 ) {
                     Text("🔊 Dźwięk + wibracja")
                 }
-
 
                 Button(
                     onClick = {
@@ -1357,8 +1362,8 @@ fun AddReminderScreen(
                         defaultAlarmPlayer = null
                     },
                     modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp),
                     shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (!soundEnabled) {

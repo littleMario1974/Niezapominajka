@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 val Ecru = Color(0xFFFDF6EC)
 val SurfaceCream = Color(0xFFFFF2E6)
 val SurfaceVariant = Color(0xFFFCE3D7)
+val RoseLight = Color(0xFFF8D5D5)
 val Rose = Color(0xFFECA3AD)
 val RoseDark = Color(0xFFD67A84)
 val RoseMuted = Color(0xFFB98F86)

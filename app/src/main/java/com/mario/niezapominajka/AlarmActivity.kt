@@ -8,11 +8,6 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.animateColor
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,7 +22,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import com.mario.niezapominajka.ui.theme.Ecru
+import com.mario.niezapominajka.ui.theme.NiezapominajkaTheme
+import com.mario.niezapominajka.ui.theme.RoseDark
+import com.mario.niezapominajka.ui.theme.TextMain
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
@@ -66,41 +64,28 @@ class AlarmActivity : ComponentActivity() {
 
         startAlarm(shouldVibrate)
         setContent {
-            var dismissed by remember { mutableStateOf(false) }
+            NiezapominajkaTheme {
+                var dismissed by remember { mutableStateOf(false) }
 
-            val infiniteTransition = rememberInfiniteTransition(
-                label = "alarmColor"
-            )
+                if (!dismissed) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Ecru)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "⏰ PRZYPOMNIENIE",
+                            color = RoseDark,
+                            fontSize = 24.sp
+                        )
 
-            val backgroundColor by infiniteTransition.animateColor(
-                initialValue = Color.Red,
-                targetValue = Color.Blue,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(700),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "backgroundColor"
-            )
-
-            if (!dismissed) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(backgroundColor)
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "⏰ PRZYPOMNIENIE",
-                        color = Color.White,
-                        fontSize = 24.sp
-                    )
-
-                    Text(
-                        text = reminderText,
-                        color = Color.White,
-                        fontSize = 40.sp,
+                        Text(
+                            text = reminderText,
+                            color = TextMain,
+                            fontSize = 40.sp,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 24.dp),

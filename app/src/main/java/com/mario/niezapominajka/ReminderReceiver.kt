@@ -35,6 +35,12 @@ class ReminderReceiver : BroadcastReceiver() {
         val speakText =
             intent.getBooleanExtra("speak_text", false)
 
+        val vibrationEnabled = intent.getBooleanExtra(
+            "vibration_enabled",
+            !speakText && intent.getStringExtra("audio_uri").isNullOrBlank() &&
+                intent.getStringExtra("voice_file_path").isNullOrBlank()
+        )
+
         val voiceFilePath =
             intent.getStringExtra("voice_file_path")
 
@@ -108,6 +114,7 @@ class ReminderReceiver : BroadcastReceiver() {
                             expectedHour = reminderHour,
                             expectedMinute = reminderMinute,
                             expectedSoundEnabled = soundEnabled,
+                            expectedVibrationEnabled = vibrationEnabled,
                             expectedSpeakText = speakText,
                             expectedVoiceFilePath = voiceFilePath,
                             expectedAudioUri = audioUri,
@@ -128,6 +135,7 @@ class ReminderReceiver : BroadcastReceiver() {
                                 context = context,
                                 reminderText = reminderText,
                                 soundEnabled = soundEnabled,
+                                vibrationEnabled = vibrationEnabled,
                                 speakText = speakText,
                                 voiceFilePath = voiceFilePath,
                                 audioUri = audioUri,
@@ -147,6 +155,7 @@ class ReminderReceiver : BroadcastReceiver() {
                         context = context,
                         reminderText = reminderText,
                         soundEnabled = soundEnabled,
+                        vibrationEnabled = vibrationEnabled,
                         speakText = speakText,
                         voiceFilePath = voiceFilePath,
                         audioUri = audioUri,
@@ -172,6 +181,7 @@ class ReminderReceiver : BroadcastReceiver() {
         context: Context,
         reminderText: String,
         soundEnabled: Boolean,
+        vibrationEnabled: Boolean,
         speakText: Boolean,
         voiceFilePath: String?,
         audioUri: String?,
@@ -194,6 +204,7 @@ class ReminderReceiver : BroadcastReceiver() {
             putExtra("reminder_text", reminderText)
             putExtra("sound_enabled", soundEnabled)
             putExtra("speak_text", speakText)
+            putExtra("vibration_enabled", vibrationEnabled)
             putExtra("voice_file_path", voiceFilePath)
             putExtra("audio_uri", audioUri)
             putExtra("reminder_id", reminderId)
@@ -251,6 +262,7 @@ class ReminderReceiver : BroadcastReceiver() {
         context: Context,
         reminderText: String,
         soundEnabled: Boolean,
+        vibrationEnabled: Boolean,
         speakText: Boolean,
         voiceFilePath: String?,
         audioUri: String?,
@@ -261,12 +273,7 @@ class ReminderReceiver : BroadcastReceiver() {
             Context.KEYGUARD_SERVICE
         ) as KeyguardManager
         val isDeviceLocked = keyguardManager.isKeyguardLocked
-        val shouldVibrate = isDeviceLocked &&
-            !speakText &&
-            (
-                !soundEnabled ||
-                    (audioUri.isNullOrBlank() && voiceFilePath.isNullOrBlank())
-            )
+        val shouldVibrate = isDeviceLocked && vibrationEnabled
 
         // Dźwięk i TTS są koordynowane w jednej usłudze, również gdy
         // kilka przypomnień uruchomi się w tej samej chwili.
@@ -279,6 +286,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 putExtra("reminder_id", reminderId)
                 putExtra("sound_enabled", soundEnabled)
                 putExtra("speak_text", speakText)
+                putExtra("vibration_enabled", vibrationEnabled)
                 putExtra("voice_file_path", voiceFilePath)
                 putExtra("audio_uri", audioUri)
             }
@@ -300,6 +308,7 @@ class ReminderReceiver : BroadcastReceiver() {
             putExtra("voice_file_path", voiceFilePath)
             putExtra("audio_uri", audioUri)
             putExtra("should_vibrate", shouldVibrate)
+            putExtra("vibration_enabled", vibrationEnabled)
             putExtra("reminder_id", reminderId)
             putExtra("repeat_type", repeatType)
         }

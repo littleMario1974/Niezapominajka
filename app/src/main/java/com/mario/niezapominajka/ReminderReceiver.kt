@@ -22,72 +22,6 @@ import kotlinx.coroutines.launch
 private const val TAG = "Niezapominajka"
 private const val REMINDERS_CHANNEL_ID = "reminders_alarm_v2"
 
-private fun getNextReminderDate(
-    date: Long,
-    hour: Int,
-    minute: Int,
-    repeatType: String,
-    monthlyDay: Int
-): Long? {
-    if (repeatType == "NONE") return null
-
-    if (date <= 0L || hour !in 0..23 || minute !in 0..59) {
-        Log.e(TAG, "Nieprawidłowe dane terminu: date=$date, hour=$hour, minute=$minute")
-        return null
-    }
-
-    if (repeatType !in setOf("DAILY", "WEEKLY", "MONTHLY")) {
-        Log.e(TAG, "Nieznany typ powtarzania: $repeatType")
-        return null
-    }
-
-    val calendar = java.util.Calendar.getInstance().apply {
-        timeInMillis = date
-        set(java.util.Calendar.HOUR_OF_DAY, hour)
-        set(java.util.Calendar.MINUTE, minute)
-        set(java.util.Calendar.SECOND, 0)
-        set(java.util.Calendar.MILLISECOND, 0)
-    }
-
-    val targetDay = if (monthlyDay in 1..31) {
-        monthlyDay
-    } else {
-        calendar.get(java.util.Calendar.DAY_OF_MONTH)
-    }
-
-    fun advance() {
-        when (repeatType) {
-            "DAILY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
-
-            "WEEKLY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
-
-            "MONTHLY" -> advanceMonthlyOccurrence(calendar, targetDay)
-        }
-    }
-
-    // Wyznacz pierwszy termin po poprzednim alarmie.
-    advance()
-
-    // Jeżeli alarm został obsłużony z opóźnieniem, pomiń terminy,
-    // które już minęły.
-    val now = System.currentTimeMillis()
-    var attempts = 0
-
-    while (calendar.timeInMillis <= now && attempts < 500) {
-        advance()
-        attempts++
-    }
-
-    val result = calendar.timeInMillis
-
-    return if (result > now) {
-        result
-    } else {
-        Log.e(TAG, "Nie udało się wyznaczyć przyszłego terminu.")
-        null
-    }
-}
-
 private suspend fun updateReminderDate(
     context: Context,
     reminderId: Long,
@@ -165,15 +99,16 @@ class ReminderReceiver : BroadcastReceiver() {
         val isSnooze =
             intent.getBooleanExtra("is_snooze", false)
 
-        val nextDate = if (isSnooze) {
+        val nextDate = if (isSnooze || repeatType == "NONE") {
             null
         } else {
-            getNextReminderDate(
-                reminderDate,
-                reminderHour,
-                reminderMinute,
-                repeatType,
-                monthlyDay
+            nextFutureOccurrence(
+                date = reminderDate,
+                hour = reminderHour,
+                minute = reminderMinute,
+                repeatType = repeatType,
+                monthlyDay = monthlyDay,
+                nowMillis = System.currentTimeMillis()
             )
         }
 

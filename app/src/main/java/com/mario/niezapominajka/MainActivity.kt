@@ -295,26 +295,42 @@ private var lastExactAlarmPermission: Boolean? = null
     }
 
     override fun onResume() {
-    super.onResume()
+        super.onResume()
+        refreshVersion++
 
-    refreshVersion++
+        val exactAlarmPermission = canScheduleExactAlarms(this)
+        val permissionWasGranted =
+            lastExactAlarmPermission != true && exactAlarmPermission
+        lastExactAlarmPermission = exactAlarmPermission
 
-    val exactAlarmPermission = canScheduleExactAlarms(this)
-    val permissionWasGranted =
-        lastExactAlarmPermission != true && exactAlarmPermission
-
-    lastExactAlarmPermission = exactAlarmPermission
-
-    if (permissionWasGranted) {
+        // Android może usunąć alarmy dokładne po cofnięciu zgody.
+        // Przy każdym powrocie do aplikacji odtwarzamy harmonogram:
+        // dokładny, jeśli zgoda jest dostępna, albo rezerwowy, jeśli jej brak.
         lifecycleScope.launch {
-            val reminders = loadReminders(this@MainActivity)
-
-            reminders.forEach { reminder ->
-                scheduleReminder(this@MainActivity, reminder)
+            try {
+                val reminders = loadReminders(this@MainActivity)
+                reminders.forEach { reminder ->
+                    scheduleReminder(
+                        context = this@MainActivity,
+                        reminder = reminder,
+                        requestPermissionIfMissing = false
+                    )
+                }
+                android.util.Log.i(
+                    "Niezapominajka",
+                    "Odtworzono ${reminders.size} alarmów po powrocie do aplikacji; " +
+                        "alarmy dokładne: $exactAlarmPermission, " +
+                        "zgoda właśnie przyznana: $permissionWasGranted."
+                )
+            } catch (e: Exception) {
+                android.util.Log.e(
+                    "Niezapominajka",
+                    "Nie udało się odtworzyć alarmów po powrocie do aplikacji.",
+                    e
+                )
             }
         }
     }
-}
 }
 
 @Composable

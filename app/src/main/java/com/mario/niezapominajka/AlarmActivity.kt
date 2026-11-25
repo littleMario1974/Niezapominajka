@@ -158,9 +158,7 @@ class AlarmActivity : ComponentActivity() {
                             dismissed = true
                             stopAlarm()
 
-                            stopService(
-                                Intent(this@AlarmActivity, AlarmService::class.java)
-                            )
+                            stopSharedAlarmService(reminderId)
 
                             if (reminderId != -1L) {
                                 NotificationManagerCompat.from(this@AlarmActivity)
@@ -223,9 +221,7 @@ class AlarmActivity : ComponentActivity() {
                             dismissed = true
                             stopAlarm()
 
-                            stopService(
-                                Intent(this@AlarmActivity, AlarmService::class.java)
-                            )
+                            stopSharedAlarmService(reminderId)
                             if (reminderId != -1L) {
                                 NotificationManagerCompat.from(this@AlarmActivity)
                                     .cancel(reminderId.hashCode())
@@ -265,6 +261,15 @@ class AlarmActivity : ComponentActivity() {
 
         return super.onKeyDown(keyCode, event)
     }
+    private fun stopSharedAlarmService(reminderId: Long) {
+        if (reminderId == -1L) return
+        val stopIntent = Intent(this, AlarmService::class.java).apply {
+            action = AlarmService.ACTION_STOP
+            putExtra(AlarmService.EXTRA_REMINDER_ID, reminderId)
+        }
+        startService(stopIntent)
+    }
+
     private fun speakReminder() {
         textToSpeech?.speak(
             reminderSpeechText,

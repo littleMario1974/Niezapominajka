@@ -601,7 +601,7 @@ var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Aby przypomnienia uruchamiały się o zaplanowanej godzinie, włącz dostęp do dokładnych alarmów w ustawieniach telefonu."
+                            text = "Bez tego uprawnienia Android może opóźniać przypomnienia. Aplikacja ustawi alarmy rezerwowe, ale aby zwiększyć punktualność, włącz dostęp do dokładnych alarmów w ustawieniach telefonu."
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(

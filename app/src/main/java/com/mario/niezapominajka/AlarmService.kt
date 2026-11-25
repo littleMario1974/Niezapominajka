@@ -131,7 +131,7 @@ class AlarmService : Service() {
                             handler.post {
                                 val activeId = currentReminderId ?: return@post
                                 if (utteranceId == "reminder_$activeId") {
-                                    failCurrentAlarm()
+                                    fallbackFromSpeech()
                                 }
                             }
                         }
@@ -141,12 +141,12 @@ class AlarmService : Service() {
                 if (ttsReady) {
                     speakCurrentAlarm()
                 } else {
-                    Log.w(TAG, "Brak polskiego głosu TTS.")
-                    failCurrentAlarm()
+                    Log.w(TAG, "Brak polskiego głosu TTS; próba użycia dźwięku alarmu.")
+                    fallbackFromSpeech()
                 }
             } else {
-                Log.e(TAG, "Nie udało się zainicjalizować TTS.")
-                failCurrentAlarm()
+                Log.e(TAG, "Nie udało się zainicjalizować TTS; próba użycia dźwięku alarmu.")
+                fallbackFromSpeech()
             }
         }
     }
@@ -161,8 +161,8 @@ class AlarmService : Service() {
             "reminder_${alarm.id}"
         )
         if (result == TextToSpeech.ERROR) {
-            Log.e(TAG, "Nie udało się odczytać przypomnienia ID=${alarm.id}.")
-            failCurrentAlarm()
+            Log.e(TAG, "Nie udało się odczytać przypomnienia ID=${alarm.id}; próba użycia dźwięku alarmu.")
+            fallbackFromSpeech()
         }
     }
 
@@ -194,7 +194,10 @@ class AlarmService : Service() {
                 else -> {
                     val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                         ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                        ?: return false
+                    if (uri == null) {
+                        player.release()
+                        return false
+                    }
                     player.setDataSource(this, uri)
                 }
             }
@@ -208,6 +211,22 @@ class AlarmService : Service() {
             Log.e(TAG, "Nie udało się uruchomić dźwięku alarmu.", e)
             false
         }
+    }
+
+    /** Gdy TTS nie może mówić, zachowujemy alarm przez odtworzenie dźwięku, jeśli jest włączony. */
+    private fun fallbackFromSpeech() {
+        val alarm = currentReminderId?.let(activeAlarms::get) ?: return
+        speechRepeatRunnable?.let(handler::removeCallbacks)
+        speechRepeatRunnable = null
+        try {
+            textToSpeech?.stop()
+        } catch (_: Exception) {
+        }
+
+        if (alarm.soundEnabled && playAlarm(alarm.audioUri, alarm.voiceFilePath)) {
+            return
+        }
+        failCurrentAlarm()
     }
 
     private fun failCurrentAlarm() {

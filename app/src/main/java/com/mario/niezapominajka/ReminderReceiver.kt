@@ -61,19 +61,7 @@ private fun getNextReminderDate(
 
             "WEEKLY" -> calendar.add(java.util.Calendar.DAY_OF_MONTH, 7)
 
-            "MONTHLY" -> {
-                calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
-                calendar.add(java.util.Calendar.MONTH, 1)
-
-                val maxDay = calendar.getActualMaximum(
-                    java.util.Calendar.DAY_OF_MONTH
-                )
-
-                calendar.set(
-                    java.util.Calendar.DAY_OF_MONTH,
-                    minOf(targetDay, maxDay)
-                )
-            }
+            "MONTHLY" -> advanceMonthlyOccurrence(calendar, targetDay)
         }
     }
 

@@ -1735,7 +1735,7 @@ internal suspend fun updateReminderDateIfUnchanged(
     expectedAudioUri: String?,
     expectedRepeatType: String,
     expectedMonthlyDay: Int,
-    nextDate: Long
+    nextDate: Long?
 ): Boolean {
     var updated = false
 
@@ -1764,8 +1764,10 @@ internal suspend fun updateReminderDateIfUnchanged(
 
             if (!unchanged) break
 
-            item.put("date", nextDate)
-            preferences[REMINDERS_KEY] = array.toString()
+            if (nextDate != null) {
+                item.put("date", nextDate)
+                preferences[REMINDERS_KEY] = array.toString()
+            }
             updated = true
             break
         }

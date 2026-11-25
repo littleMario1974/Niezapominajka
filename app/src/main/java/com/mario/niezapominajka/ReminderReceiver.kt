@@ -376,11 +376,18 @@ class ReminderReceiver : BroadcastReceiver() {
 
         val notification = notificationBuilder.build()
 
-        if (
-            Build.VERSION.SDK_INT < 33 ||
-            context.checkSelfPermission(
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
+        // Gdy telefon jest odblokowany i mamy zgodę na nakładkę,
+        // trwały baner zastępuje zwykłe powiadomienie heads-up.
+        // Dzięki temu nie miga najpierw drugi, krótkotrwały baner systemowy.
+        val persistentOverlayAvailable =
+            !isDeviceLocked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                android.provider.Settings.canDrawOverlays(context)
+
+        if (!persistentOverlayAvailable &&
+            (Build.VERSION.SDK_INT < 33 ||
+                context.checkSelfPermission(
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED)
         ) {
             NotificationManagerCompat.from(context).notify(
                 reminderId.hashCode(),

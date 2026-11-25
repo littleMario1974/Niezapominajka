@@ -30,23 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.speech.tts.TextToSpeech
-import java.util.Locale
 import androidx.compose.ui.text.style.TextAlign
-import android.os.Handler
-import android.os.Looper
-import android.speech.tts.UtteranceProgressListener
 import androidx.core.app.NotificationManagerCompat
 import android.media.AudioManager
 
 class AlarmActivity : ComponentActivity() {
 
     private var vibrator: Vibrator? = null
-    private var textToSpeech: TextToSpeech? = null
-    private val speechHandler = Handler(Looper.getMainLooper())
-    private var speechRunnable: Runnable? = null
-    private var reminderSpeechText: String = ""
-    private var speechEnabled: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,43 +57,7 @@ class AlarmActivity : ComponentActivity() {
             intent.getBooleanExtra("speak_text", false)
         val repeatType = intent.getStringExtra("repeat_type") ?: "NONE"
         val shouldVibrate = intent.getBooleanExtra("should_vibrate", false)
-        speechEnabled = speakText
-        reminderSpeechText = reminderText
 
-        if (speakText) {
-            textToSpeech = TextToSpeech(this) { status ->
-                if (status == TextToSpeech.SUCCESS) {
-                    val languageResult = textToSpeech?.setLanguage(
-                        Locale.forLanguageTag("pl-PL")
-                    )
-
-                    if (
-                        languageResult != TextToSpeech.LANG_MISSING_DATA &&
-                        languageResult != TextToSpeech.LANG_NOT_SUPPORTED
-                    ) {
-                        textToSpeech?.setOnUtteranceProgressListener(
-                            object : UtteranceProgressListener() {
-                                override fun onStart(utteranceId: String?) {}
-
-                                override fun onDone(utteranceId: String?) {
-                                    speechHandler.post {
-                                        scheduleSpeechAgain()
-                                    }
-                                }
-
-                                override fun onError(utteranceId: String?) {
-                                    speechHandler.post {
-                                        scheduleSpeechAgain()
-                                    }
-                                }
-                            }
-                        )
-
-                        speakReminder()
-                    }
-                }
-            }
-        }
         val voiceFilePath =
             intent.getStringExtra("voice_file_path")
 
@@ -270,33 +224,6 @@ class AlarmActivity : ComponentActivity() {
         startService(stopIntent)
     }
 
-    private fun speakReminder() {
-        textToSpeech?.speak(
-            reminderSpeechText,
-            TextToSpeech.QUEUE_FLUSH,
-            null,
-            "reminder_speech"
-        )
-    }
-
-    private fun scheduleSpeechAgain() {
-        if (!speechEnabled) return
-
-        speechRunnable?.let {
-            speechHandler.removeCallbacks(it)
-        }
-
-        speechRunnable = Runnable {
-            if (speechEnabled) {
-                speakReminder()
-            }
-        }
-
-        speechRunnable?.let {
-            speechHandler.postDelayed(it, 5000)
-        }
-    }
-
     private fun startAlarm(shouldVibrate: Boolean) {
         if (!shouldVibrate) return
 
@@ -325,27 +252,12 @@ class AlarmActivity : ComponentActivity() {
 
 
     private fun stopAlarm() {
-        speechEnabled = false
-
-        speechRunnable?.let {
-            speechHandler.removeCallbacks(it)
-        }
-        speechRunnable = null
-        speechHandler.removeCallbacksAndMessages(null)
-
-        textToSpeech?.stop()
-
-
         vibrator?.cancel()
         vibrator = null
     }
 
     override fun onDestroy() {
         stopAlarm()
-
-        textToSpeech?.stop()
-        textToSpeech?.shutdown()
-        textToSpeech = null
 
         super.onDestroy()
     }

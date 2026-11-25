@@ -60,7 +60,13 @@ class BootReceiver : BroadcastReceiver() {
                 // Po dłuższym wyłączeniu telefonu zapisujemy od razu najbliższy
                 // przyszły termin, aby kolejne restarty nie liczyły od starej daty.
                 if (datesUpdated) {
-                    saveReminders(appContext, normalizedReminders)
+                    try {
+                        saveReminders(appContext, normalizedReminders)
+                    } catch (e: Exception) {
+                        // Nawet gdy zapis się nie powiedzie, odtwarzamy alarmy
+                        // z wyliczonymi terminami; kolejny start ponowi normalizację.
+                        Log.e(TAG, "Nie udało się zapisać zaktualizowanych dat.", e)
+                    }
                 }
 
                 normalizedReminders.forEach { reminder ->

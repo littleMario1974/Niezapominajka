@@ -93,10 +93,10 @@ class AlarmService : Service() {
             if (ttsReady) speakCurrentAlarm()
         } else if (nextAlarm.soundEnabled) {
             if (!playAlarm(nextAlarm.audioUri, nextAlarm.voiceFilePath)) {
-                finishCurrentAlarm()
+                failCurrentAlarm()
             }
         } else {
-            finishCurrentAlarm()
+            failCurrentAlarm()
         }
     }
 
@@ -119,14 +119,21 @@ class AlarmService : Service() {
                         override fun onDone(utteranceId: String?) {
                             handler.post {
                                 val activeId = currentReminderId ?: return@post
-                                if (activeAlarms[activeId]?.speakText == true) {
+                                if (utteranceId == "reminder_$activeId" &&
+                                    activeAlarms[activeId]?.speakText == true
+                                ) {
                                     scheduleSpeechRepeat(activeId)
                                 }
                             }
                         }
 
                         override fun onError(utteranceId: String?) {
-                            handler.post { finishCurrentAlarm() }
+                            handler.post {
+                                val activeId = currentReminderId ?: return@post
+                                if (utteranceId == "reminder_$activeId") {
+                                    failCurrentAlarm()
+                                }
+                            }
                         }
                     }
                 )
@@ -135,11 +142,11 @@ class AlarmService : Service() {
                     speakCurrentAlarm()
                 } else {
                     Log.w(TAG, "Brak polskiego głosu TTS.")
-                    finishCurrentAlarm()
+                    failCurrentAlarm()
                 }
             } else {
                 Log.e(TAG, "Nie udało się zainicjalizować TTS.")
-                finishCurrentAlarm()
+                failCurrentAlarm()
             }
         }
     }
@@ -155,7 +162,7 @@ class AlarmService : Service() {
         )
         if (result == TextToSpeech.ERROR) {
             Log.e(TAG, "Nie udało się odczytać przypomnienia ID=${alarm.id}.")
-            finishCurrentAlarm()
+            failCurrentAlarm()
         }
     }
 
@@ -203,9 +210,15 @@ class AlarmService : Service() {
         }
     }
 
-    private fun finishCurrentAlarm() {
+    private fun failCurrentAlarm() {
+        currentReminderId?.let(activeAlarms::remove)
         stopCurrentPlayback()
-        playNextActiveAlarm()
+        if (activeAlarms.isEmpty()) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        } else {
+            playNextActiveAlarm()
+        }
     }
 
     private fun stopCurrentPlayback() {

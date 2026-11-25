@@ -22,43 +22,6 @@ import kotlinx.coroutines.launch
 private const val TAG = "Niezapominajka"
 private const val REMINDERS_CHANNEL_ID = "reminders_alarm_v2"
 
-private suspend fun updateReminderDate(
-    context: Context,
-    reminderId: Long,
-    nextDate: Long
-): Boolean {
-    if (reminderId == -1L) {
-        Log.e(TAG, "Nie można zapisać daty: nieprawidłowy identyfikator.")
-        return false
-    }
-
-    val reminders = loadReminders(context)
-
-    var found = false
-
-    val updatedReminders = reminders.map { reminder ->
-        if (reminder.id == reminderId) {
-            found = true
-            reminder.copy(date = nextDate)
-        } else {
-            reminder
-        }
-    }
-
-    if (!found) {
-        Log.e(TAG, "Nie znaleziono przypomnienia o ID=$reminderId.")
-        return false
-    }
-
-    saveReminders(context, updatedReminders)
-
-    Log.d(
-        TAG,
-        "Zapisano nową datę: ID=$reminderId, nextDate=$nextDate"
-    )
-
-    return true
-}
 
 class ReminderReceiver : BroadcastReceiver() {
 
@@ -127,33 +90,52 @@ class ReminderReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 if (nextDate != null) {
-                    try {
-                        updateReminderDate(
-                            context,
-                            reminderId,
-                            nextDate
+                    val updated = try {
+                        updateReminderDateIfUnchanged(
+                            context = context,
+                            reminderId = reminderId,
+                            expectedDate = reminderDate,
+                            expectedText = reminderText,
+                            expectedHour = reminderHour,
+                            expectedMinute = reminderMinute,
+                            expectedSoundEnabled = soundEnabled,
+                            expectedSpeakText = speakText,
+                            expectedVoiceFilePath = voiceFilePath,
+                            expectedAudioUri = audioUri,
+                            expectedRepeatType = repeatType,
+                            expectedMonthlyDay = monthlyDay,
+                            nextDate = nextDate
                         )
                     } catch (e: Exception) {
-                        Log.e(TAG, "Błąd zapisu nowej daty.", e)
+                        Log.e(TAG, "Błąd atomowej aktualizacji daty przypomnienia.", e)
+                        false
                     }
 
-                    try {
-                        scheduleNextReminder(
-                            context = context,
-                            reminderText = reminderText,
-                            soundEnabled = soundEnabled,
-                            speakText = speakText,
-                            voiceFilePath = voiceFilePath,
-                            audioUri = audioUri,
-                            reminderId = reminderId,
-                            repeatType = repeatType,
-                            nextDate = nextDate,
-                            hour = reminderHour,
-                            minute = reminderMinute,
-                            monthlyDay = monthlyDay
+                    if (updated) {
+                        try {
+                            scheduleNextReminder(
+                                context = context,
+                                reminderText = reminderText,
+                                soundEnabled = soundEnabled,
+                                speakText = speakText,
+                                voiceFilePath = voiceFilePath,
+                                audioUri = audioUri,
+                                reminderId = reminderId,
+                                repeatType = repeatType,
+                                nextDate = nextDate,
+                                hour = reminderHour,
+                                minute = reminderMinute,
+                                monthlyDay = monthlyDay
+                            )
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Błąd planowania kolejnego alarmu.", e)
+                        }
+                    } else {
+                        Log.i(
+                            TAG,
+                            "Pominięto ponowne planowanie nieaktualnego alarmu ID=$reminderId. " +
+                                "Przypomnienie mogło zostać zmienione lub usunięte."
                         )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Błąd planowania kolejnego alarmu.", e)
                     }
                 }
 

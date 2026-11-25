@@ -180,6 +180,8 @@ val intent = android.content.Intent(
     putExtra("repeat_type", reminder.repeatType)
     putExtra("monthly_day", reminder.monthlyDay)
     putExtra("reminder_date", calendar.timeInMillis)
+    // DataStore może nadal przechowywać bazową datę sprzed nadrobienia zaległości.
+    putExtra("reminder_stored_date", reminder.date)
     putExtra("reminder_hour", reminder.hour)
     putExtra("reminder_minute", reminder.minute)
 }

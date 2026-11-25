@@ -20,7 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 private const val TAG = "Niezapominajka"
-private const val REMINDERS_CHANNEL_ID = "reminders_alarm_v2"
+private const val REMINDERS_CHANNEL_ID = "reminders_alarm_v3"
 
 
 class ReminderReceiver : BroadcastReceiver() {

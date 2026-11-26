@@ -353,11 +353,11 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(false)
             .setOngoing(false)
 
-        // Ekran alarmu uruchamiamy tylko przy zablokowanym telefonie.
-        // Przy odblokowanym pozostaje zwykły, widoczny i cichy baner.
-        if (isDeviceLocked) {
-            notificationBuilder.setFullScreenIntent(alarmPendingIntent, true)
-        }
+        // Powiadomienie pełnoekranowe jest używane także przy odblokowanym
+        // ekranie. Android 13+ pokazuje wtedy trwały baner heads-up,
+        // który użytkownik może odrzucić lub uśpić. Przy zablokowanym
+        // ekranie nadal uruchamia się AlarmActivity.
+        notificationBuilder.setFullScreenIntent(alarmPendingIntent, true)
 
         val notification = notificationBuilder.build()
 
